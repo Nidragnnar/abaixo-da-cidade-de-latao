@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <glm/vec2.hpp>
@@ -38,10 +39,11 @@ struct MapaCarregado {
     glm::vec2 inicio;                     // centro da célula '@'
     std::optional<glm::vec2> chave;       // centro da célula 'K'
     std::optional<glm::ivec2> elevador;   // célula 'E'
+    std::vector<std::pair<char, glm::vec2>> marcas;  // r a g c: inimigos dos mapas de teste
 };
 
 // '#' parede, '.' chão, '@' chão + início, 'C' comporta, 'T' comporta trancada, 'E' elevador,
-// 'K' chão + válvula-chave; lança std::invalid_argument se o texto for inválido
+// 'K' chão + válvula-chave, r a g c chão + marca de inimigo; lança std::invalid_argument se o texto for inválido
 MapaCarregado carregarDeTexto(const std::vector<std::string>& linhas);
 
 }

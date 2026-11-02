@@ -34,7 +34,12 @@ void explorarAoRedor(Exploracao& e, const Grade& g, glm::vec2 posicao, float rai
 std::optional<glm::ivec2> celulaAFrente(const Grade& g, glm::vec2 posicao, float angulo, float alcance);
 
 // Busca em largura com 4 vizinhos; índice y * largura + x; -1 = inalcançável.
-// Passa por tudo que não é parede (e não é comporta trancada, se atravessaTrancada for falso).
-std::vector<int> distanciasNaGrade(const Grade& g, glm::ivec2 origem, bool atravessaTrancada);
+// Passa por tudo que não é parede (e não é comporta trancada, se atravessaTrancada for falso;
+// nem o elevador, se atravessaElevador for falso — caminho de quem anda, já que a gaiola bloqueia a passagem).
+std::vector<int> distanciasNaGrade(const Grade& g, glm::ivec2 origem, bool atravessaTrancada,
+                                   bool atravessaElevador = true);
+
+// Como temLinhaDeVisao, mas também barrado pelo que bloqueia a passagem (elevador)
+bool temPassagemLivre(const Grade& g, glm::vec2 de, glm::vec2 para);
 
 }

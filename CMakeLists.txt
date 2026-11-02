@@ -20,11 +20,17 @@ add_library(nucleo STATIC
     src/jogo/PassoFixo.cpp
     src/mundo/Grade.cpp
     src/mundo/Zona.cpp
+    src/mundo/Aleatorio.cpp
     src/mundo/Consultas.cpp
     src/mundo/Gerador.cpp
     src/mundo/Colisao.cpp
     src/jogo/Jogador.cpp
     src/jogo/Partida.cpp
+    src/jogo/Inimigos.cpp
+    src/jogo/Projeteis.cpp
+    src/jogo/IA.cpp
+    src/jogo/Armas.cpp
+    src/jogo/Placar.cpp
     src/render/Camera.cpp
     src/render/GeometriaMasmorra.cpp
     src/render/Xadrez.cpp
@@ -33,6 +39,10 @@ add_library(nucleo STATIC
     src/render/Sprites.cpp
     src/render/Zonas.cpp
     src/render/Automapa.cpp
+    src/render/Primitivas2D.cpp
+    src/render/Texto.cpp
+    src/render/Hud.cpp
+    src/render/AnimacaoInimigos.cpp
 )
 configurar_alvo(nucleo)
 target_include_directories(nucleo PUBLIC ${CMAKE_SOURCE_DIR}/src)

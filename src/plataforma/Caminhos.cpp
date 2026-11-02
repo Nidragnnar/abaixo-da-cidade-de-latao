@@ -22,6 +22,22 @@ std::filesystem::path pastaDoExecutavel() {
     return pasta;
 }
 
+namespace {
+std::filesystem::path pastaDeDadosEscolhida;
+}
+
+void definirPastaDeDados(const std::filesystem::path& pasta) { pastaDeDadosEscolhida = pasta; }
+
+std::filesystem::path pastaDeDados() {
+    if (!pastaDeDadosEscolhida.empty()) return pastaDeDadosEscolhida;
+    // Sem organização: %APPDATA%\Roguelike
+    char* pref = SDL_GetPrefPath("", "Roguelike");
+    if (!pref) return pastaDoExecutavel();
+    std::filesystem::path p = deUtf8(pref);
+    SDL_free(pref);
+    return p;
+}
+
 std::filesystem::path caminhoAsset(std::string_view relativo) {
     return pastaDoExecutavel() / "assets" / deUtf8(relativo);
 }

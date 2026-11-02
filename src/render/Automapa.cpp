@@ -8,16 +8,13 @@ namespace render {
 
 namespace {
 
-constexpr glm::vec3 COR_CHAO{0.35f, 0.33f, 0.30f};
-constexpr glm::vec3 COR_COMPORTA{0.80f, 0.60f, 0.20f};
-constexpr glm::vec3 COR_TRANCADA{0.80f, 0.20f, 0.20f};
-constexpr glm::vec3 COR_ELEVADOR{0.30f, 0.80f, 0.40f};
-constexpr glm::vec3 COR_CHAVE{0.30f, 0.80f, 0.90f};
-constexpr glm::vec3 COR_JOGADOR{1.0f, 1.0f, 1.0f};
-
-void retangulo(std::vector<VerticeCor>& v, glm::vec2 a, glm::vec2 b, glm::vec3 cor) {
-    v.insert(v.end(), {{a, cor}, {{b.x, a.y}, cor}, {b, cor}, {a, cor}, {b, cor}, {{a.x, b.y}, cor}});
-}
+constexpr glm::vec4 COR_PAINEL{0.0f, 0.0f, 0.0f, 1.0f};
+constexpr glm::vec4 COR_CHAO{0.35f, 0.33f, 0.30f, 1.0f};
+constexpr glm::vec4 COR_COMPORTA{0.80f, 0.60f, 0.20f, 1.0f};
+constexpr glm::vec4 COR_TRANCADA{0.80f, 0.20f, 0.20f, 1.0f};
+constexpr glm::vec4 COR_ELEVADOR{0.30f, 0.80f, 0.40f, 1.0f};
+constexpr glm::vec4 COR_CHAVE{0.30f, 0.80f, 0.90f, 1.0f};
+constexpr glm::vec4 COR_JOGADOR{1.0f, 1.0f, 1.0f, 1.0f};
 
 }
 
@@ -29,12 +26,12 @@ std::vector<VerticeCor> construirAutomapa(const mundo::Grade& g, const mundo::Ex
     auto naTela = [&](glm::vec2 celula) { return origem + celula * P; };
 
     std::vector<VerticeCor> v;
-    retangulo(v, origem, origem + lado, glm::vec3(0.0f));
+    adicionarRetangulo(v, origem, origem + lado, COR_PAINEL);
 
     for (int y = 0; y < g.altura(); ++y)
         for (int x = 0; x < g.largura(); ++x) {
             if (!e.vista(x, y)) continue;
-            glm::vec3 cor;
+            glm::vec4 cor;
             switch (g.em(x, y)) {
                 case mundo::Celula::Parede: continue;
                 case mundo::Celula::Comporta:
@@ -43,12 +40,12 @@ std::vector<VerticeCor> construirAutomapa(const mundo::Grade& g, const mundo::Ex
                 case mundo::Celula::Elevador: cor = COR_ELEVADOR; break;
                 default: cor = COR_CHAO; break;
             }
-            retangulo(v, naTela({x, y}), naTela({x + 1, y + 1}), cor);
+            adicionarRetangulo(v, naTela({x, y}), naTela({x + 1, y + 1}), cor);
         }
 
     if (chave && e.vista(static_cast<int>(chave->x), static_cast<int>(chave->y))) {
         const glm::vec2 c = naTela(*chave);
-        retangulo(v, c - 1.5f, c + 1.5f, COR_CHAVE);
+        adicionarRetangulo(v, c - 1.5f, c + 1.5f, COR_CHAVE);
     }
 
     // Triângulo com o centro na posição do jogador, ponta na direção do olhar

@@ -1,5 +1,6 @@
 #include "jogo/Jogador.h"
 
+#include <algorithm>
 #include <cmath>
 
 #include <glm/geometric.hpp>
@@ -10,6 +11,7 @@ namespace jogo {
 
 void atualizarJogador(Jogador& j, const Comandos& c, const mundo::Grade& g, float dt) {
     j.angulo += c.giro;
+    j.inclinacao = std::clamp(j.inclinacao + c.inclinar, -INCLINACAO_MAXIMA, INCLINACAO_MAXIMA);
 
     glm::vec2 intencao{c.frente, c.lado};
     if (glm::length(intencao) > 1.0f) intencao = glm::normalize(intencao);  // diagonal não é mais rápida

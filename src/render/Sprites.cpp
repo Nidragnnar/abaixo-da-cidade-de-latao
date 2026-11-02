@@ -13,7 +13,7 @@ std::vector<Vertice> construirSprites(const std::vector<Sprite>& sprites, glm::v
         const glm::vec3 normal{paraCamera.x, 0.0f, paraCamera.y};
         // Direita de quem olha da câmera: com ela, o quadrado fica anti-horário visto de frente
         const glm::vec3 direita{normal.z, 0.0f, -normal.x};
-        const glm::vec3 centro{s.posicao.x, 0.0f, s.posicao.y};
+        const glm::vec3 centro{s.posicao.x, s.base, s.posicao.y};
         const glm::vec3 p0 = centro - direita * (s.largura * 0.5f), p1 = centro + direita * (s.largura * 0.5f);
         const glm::vec3 alto{0.0f, s.altura, 0.0f};
         adicionarQuadrado(v, p0, p1, p1 + alto, p0 + alto, static_cast<float>(s.camada), normal);

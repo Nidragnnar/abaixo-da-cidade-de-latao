@@ -19,3 +19,10 @@ TEST_CASE("câmera com ângulo 0 olha para +X") {
     CHECK(frente.z < 0.0f);  // à frente da câmera
     CHECK(frente.x == doctest::Approx(0.0f).epsilon(0.001));
 }
+
+TEST_CASE("câmera inclinada para cima vê um ponto acima à frente") {
+    auto v = render::matrizVisao({2.0f, 3.0f}, 0.0f, glm::radians(45.0f));
+    glm::vec4 p = v * glm::vec4(3.0f, 1.5f, 3.0f, 1.0f);  // 1 à frente, 1 acima dos olhos
+    CHECK(p.z < 0.0f);
+    CHECK(p.y == doctest::Approx(0.0f).epsilon(0.001));    // bem no centro da tela
+}

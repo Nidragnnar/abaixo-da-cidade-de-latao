@@ -32,3 +32,18 @@ TEST_CASE("giro altera o ângulo") {
     jogo::atualizarJogador(j, {0, 0, 0.5f}, m.grade, 1.0f / 60);
     CHECK(j.angulo == doctest::Approx(0.5f));
 }
+
+TEST_CASE("inclinar olha para cima e para baixo com limite de 60 graus") {
+    auto m = mundo::carregarDeTexto({"###", "#@#", "###"});
+    jogo::Jogador j{m.inicio, 0.0f};
+    jogo::Comandos c;
+    c.inclinar = 0.3f;
+    jogo::atualizarJogador(j, c, m.grade, 1.0f / 60);
+    CHECK(j.inclinacao == doctest::Approx(0.3f));
+    c.inclinar = 5.0f;
+    jogo::atualizarJogador(j, c, m.grade, 1.0f / 60);
+    CHECK(j.inclinacao == doctest::Approx(jogo::INCLINACAO_MAXIMA));
+    c.inclinar = -10.0f;
+    jogo::atualizarJogador(j, c, m.grade, 1.0f / 60);
+    CHECK(j.inclinacao == doctest::Approx(-jogo::INCLINACAO_MAXIMA));
+}

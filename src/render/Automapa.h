@@ -3,17 +3,12 @@
 #include <vector>
 
 #include <glm/vec2.hpp>
-#include <glm/vec3.hpp>
 
 #include "mundo/Consultas.h"
 #include "mundo/Grade.h"
+#include "render/Primitivas2D.h"
 
 namespace render {
-
-struct VerticeCor {
-    glm::vec2 posicao;  // pixels da tela baixa, origem no canto de cima à esquerda
-    glm::vec3 cor;
-};
 
 constexpr int PIXELS_POR_CELULA = 4;
 

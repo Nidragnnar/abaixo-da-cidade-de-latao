@@ -1,5 +1,8 @@
 #include <doctest/doctest.h>
 
+#include <random>
+
+#include "mundo/Aleatorio.h"
 #include "mundo/Consultas.h"
 #include "mundo/Grade.h"
 
@@ -59,4 +62,44 @@ TEST_CASE("distâncias respeitam a comporta trancada") {
     auto comTranca = mundo::distanciasNaGrade(m.grade, {1, 1}, true);
     CHECK(semTranca[1 * 6 + 4] == -1);
     CHECK(comTranca[1 * 6 + 4] == 3);
+}
+
+TEST_CASE("linha de visão entre pontos quaisquer, não só centros") {
+    auto m = mundo::carregarDeTexto({"########", "#@.....#", "#..#...#", "#......#", "########"});
+    CHECK_FALSE(mundo::temLinhaDeVisao(m.grade, {1.2f, 2.7f}, {5.9f, 2.2f}));  // passa pela parede (3,2)
+    CHECK(mundo::temLinhaDeVisao(m.grade, {1.2f, 1.3f}, {6.8f, 1.6f}));
+}
+
+TEST_CASE("linha de visão é simétrica em 2000 pares aleatórios") {
+    auto m = mundo::carregarDeTexto({"##########", "#@...#...#", "#.##...#.#", "#....#...#", "##########"});
+    std::mt19937 rng(7);
+    for (int i = 0; i < 2000; ++i) {
+        glm::vec2 a{mundo::sortearReal(rng, 1.01f, 8.99f), mundo::sortearReal(rng, 1.01f, 3.99f)};
+        glm::vec2 b{mundo::sortearReal(rng, 1.01f, 8.99f), mundo::sortearReal(rng, 1.01f, 3.99f)};
+        if (m.grade.solida(int(a.x), int(a.y)) || m.grade.solida(int(b.x), int(b.y))) continue;
+        REQUIRE(mundo::temLinhaDeVisao(m.grade, a, b) == mundo::temLinhaDeVisao(m.grade, b, a));
+    }
+}
+
+TEST_CASE("sortear fica dentro dos limites") {
+    std::mt19937 rng(1);
+    for (int i = 0; i < 1000; ++i) {
+        int v = mundo::sortear(rng, 2, 4);
+        REQUIRE((v >= 2 && v <= 4));
+        float r = mundo::sortearReal(rng, -1.0f, 1.0f);
+        REQUIRE((r >= -1.0f && r <= 1.0f));
+    }
+}
+
+TEST_CASE("distâncias podem contornar o elevador") {
+    auto m = mundo::carregarDeTexto({"#######", "#.....#", "#@..E.#", "#.....#", "#######"});
+    auto contorna = mundo::distanciasNaGrade(m.grade, {1, 2}, false, false);
+    CHECK(contorna[2 * 7 + 4] == -1);  // o próprio elevador
+    CHECK(contorna[2 * 7 + 5] == 6);   // atrás dele, dando a volta
+}
+
+TEST_CASE("passagem livre considera o elevador, a visão não") {
+    auto m = mundo::carregarDeTexto({"#######", "#@..E.#", "#######"});
+    CHECK(mundo::temLinhaDeVisao(m.grade, {1.5f, 1.5f}, {5.5f, 1.5f}));
+    CHECK_FALSE(mundo::temPassagemLivre(m.grade, {1.5f, 1.5f}, {5.5f, 1.5f}));
 }

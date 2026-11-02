@@ -104,3 +104,73 @@ TEST_CASE("partida pela semente começa no andar pedido") {
     CHECK(p.andar().zona == mundo::Zona::Fabrica);
     CHECK(p.jogador().posicao == p.andar().inicio);
 }
+
+TEST_CASE("partida pela semente tem inimigos") {
+    jogo::Partida p(42, 2);
+    CHECK(p.inimigos().size() >= 8);
+    CHECK(p.vida() == 30);
+}
+
+TEST_CASE("dano recebido desconta a defesa") {
+    jogo::Partida p(mundo::andarDeTexto({"#####", "#@a.#", "#####"}, 1), 1);
+    passos(p, 50);  // autômato chega a 0,9, prepara (0,5 s) e acerta 4–6 → 3–5; a recuperação (0,7 s) evita o 2º golpe
+    CHECK(p.vida() <= 30 - 3);
+    CHECK(p.vida() >= 30 - 5);
+    CHECK(p.tempoDesdeDano() < 0.5f);
+}
+
+TEST_CASE("morte registra uma vez e congela a partida") {
+    jogo::Partida p(mundo::andarDeTexto({"#######", "#@cc..#", "#######"}, 5), 1);
+    passos(p, 60 * 30);
+    CHECK(p.morto());
+    CHECK(p.causaDaMorte() == "Destruído por um Colosso a vapor");
+    auto pos = p.jogador().posicao;
+    passos(p, 60, {1, 0, 0});
+    CHECK(p.jogador().posicao == pos);
+    CHECK(p.vida() <= 0);
+}
+
+TEST_CASE("invencível não morre") {
+    jogo::Partida p(mundo::andarDeTexto({"#######", "#@cc..#", "#######"}, 5), 1);
+    p.tornarInvencivel();
+    passos(p, 60 * 10);
+    CHECK_FALSE(p.morto());
+}
+
+TEST_CASE("disparo faz clarão e conta destruídos") {
+    jogo::Partida p(mundo::andarDeTexto({"#########", "#@....r.#", "#########"}, 1), 1);
+    jogo::Comandos troca;
+    troca.trocarArma = true;
+    passos(p, 1, troca);
+    jogo::Comandos tiro;
+    tiro.atacar = true;
+    p.atualizar(tiro, 1.0f / 60);
+    CHECK(p.clarao() > 0.0f);
+    CHECK(p.armas().carga == 5);
+    for (int i = 0; i < 60; ++i) p.atualizar(tiro, 1.0f / 60);  // segura o gatilho: o rato cai com 1 ou 2 tiros
+    CHECK(p.inimigosDestruidos() == 1);
+    CHECK(p.pontuacao() == 100 * 1 + 10 * 1 + 0 + 50 * 1);
+}
+
+TEST_CASE("descer limpa inimigos e projéteis e mantém vida e armas") {
+    jogo::Partida p(mundo::andarDeTexto({"#########", "#@E....g#", "#########"}, 1), 7);
+    passos(p, 90);  // o atirador já atirou
+    int vida = p.vida();
+    int carga = p.armas().carga;
+    passos(p, 1, apertarE());
+    CHECK(p.andar().numero == 2);
+    CHECK(p.projeteis().empty());
+    CHECK(p.inimigos().size() >= 8);  // população nova do andar 2
+    CHECK(p.vida() == vida);
+    CHECK(p.armas().carga == carga);
+}
+
+TEST_CASE("destroços somem depois de 10 s") {
+    jogo::Partida p(mundo::andarDeTexto({"#####", "#@r.#", "#####"}, 1), 1);
+    jogo::Comandos golpe;
+    golpe.atacar = true;
+    for (int i = 0; i < 60; ++i) p.atualizar(golpe, 1.0f / 60);
+    REQUIRE(p.inimigosDestruidos() == 1);
+    passos(p, 60 * 11);
+    CHECK(p.inimigos().empty());
+}

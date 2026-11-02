@@ -1,10 +1,10 @@
 #version 330 core
 layout(location = 0) in vec2 aPos;  // pixels, origem em cima à esquerda
-layout(location = 1) in vec3 aCor;
+layout(location = 1) in vec4 aCor;
 
 uniform vec2 uTela;
 
-out vec3 vCor;
+out vec4 vCor;
 
 void main() {
     vCor = aCor;

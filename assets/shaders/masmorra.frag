@@ -10,6 +10,7 @@ uniform vec3 uCorLanterna;
 uniform float uAlcanceLanterna;
 uniform vec3 uCorAmbiente;      // cor da zona
 uniform float uFimNeblina;
+uniform float uClarao;           // 1 durante o clarão do disparo
 
 out vec4 corFinal;
 
@@ -19,6 +20,7 @@ void main() {
     float aten = pow(clamp(1.0 - d / uAlcanceLanterna, 0.0, 1.0), 2.0);
     float lambert = max(dot(normalize(vNormal), normalize(uPosLanterna - vPos)), 0.0);
     vec3 luz = uCorAmbiente + uCorLanterna * aten * (0.35 + 0.65 * lambert);
+    luz += uClarao * vec3(1.0, 0.85, 0.6) * aten;  // clarão do disparo, com o mesmo alcance da lanterna
 
     vec4 tex = texture(uTexturas, vec3(vUv, vCamada));
     if (tex.a < 0.5) discard;

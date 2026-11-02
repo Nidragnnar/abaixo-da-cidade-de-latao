@@ -6,6 +6,7 @@
 #include <set>
 #include <utility>
 
+#include "mundo/Aleatorio.h"
 #include "mundo/Consultas.h"
 
 namespace mundo {
@@ -27,10 +28,6 @@ uint32_t misturar(uint32_t s) {
     z = (z ^ (z >> 13)) * 0xC2B2AE35u;
     return z ^ (z >> 16);
 }
-
-// Sorteio próprio (a distribuição da biblioteca padrão pode mudar entre compiladores)
-int sortear(std::mt19937& rng, int min, int max) { return min + static_cast<int>(rng() % (max - min + 1)); }
-float sortear01(std::mt19937& rng) { return static_cast<float>(rng() % 1000000) / 1000000.0f; }
 
 int distanciaManhattan(glm::ivec2 a, glm::ivec2 b) { return std::abs(a.x - b.x) + std::abs(a.y - b.y); }
 
@@ -96,7 +93,7 @@ int indice(glm::ivec2 c) { return c.y * LADO_ANDAR + c.x; }
 // Uma tentativa completa; sem tranca quando querTranca é falso ou quando ela não deu certo (devolve nullopt)
 std::optional<Andar> tentar(uint32_t semente, int numero, bool querTranca) {
     std::mt19937 rng(semente);
-    Andar andar{numero, zonaDoAndar(numero), Grade(LADO_ANDAR, LADO_ANDAR), sortearSalas(rng), {}, {}, {}};
+    Andar andar{numero, zonaDoAndar(numero), Grade(LADO_ANDAR, LADO_ANDAR), sortearSalas(rng), {}, {}, {}, {}};
     Grade& g = andar.grade;
     const auto& salas = andar.salas;
     for (const Sala& s : salas) cavar(g, s);
@@ -185,7 +182,7 @@ Andar gerarAndar(uint32_t sementePartida, int numero) {
 Andar andarDeTexto(const std::vector<std::string>& linhas, int numero) {
     MapaCarregado m = carregarDeTexto(linhas);
     return Andar{numero, zonaDoAndar(numero), std::move(m.grade), {}, m.inicio,
-                 m.elevador.value_or(glm::ivec2(-1, -1)), m.chave};
+                 m.elevador.value_or(glm::ivec2(-1, -1)), m.chave, std::move(m.marcas)};
 }
 
 }

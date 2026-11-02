@@ -1,0 +1,35 @@
+#include <doctest/doctest.h>
+
+#include "jogo/Projeteis.h"
+#include "mundo/Grade.h"
+
+TEST_CASE("projétil anda 10 células por segundo") {
+    auto m = mundo::carregarDeTexto({"####################", "#@.................#", "####################"});
+    std::vector<jogo::Projetil> p{{{2.5f, 1.5f}, {10.0f, 0.0f}, 4, jogo::TipoInimigo::Atirador}};
+    jogo::atualizarProjeteis(p, m.grade, {1.5f, 1.5f}, 0.25f, 0.5f);
+    REQUIRE(p.size() == 1);
+    CHECK(p[0].posicao.x == doctest::Approx(7.5f));
+}
+
+TEST_CASE("projétil some na parede") {
+    auto m = mundo::carregarDeTexto({"######", "#@...#", "######"});
+    std::vector<jogo::Projetil> p{{{2.5f, 1.5f}, {10.0f, 0.0f}, 4, jogo::TipoInimigo::Atirador}};
+    jogo::atualizarProjeteis(p, m.grade, {1.5f, 1.5f}, 0.25f, 1.0f);
+    CHECK(p.empty());
+}
+
+TEST_CASE("projétil acerta o jogador e informa o autor") {
+    auto m = mundo::carregarDeTexto({"#######", "#@....#", "#######"});
+    std::vector<jogo::Projetil> p{{{5.5f, 1.5f}, {-10.0f, 0.0f}, 4, jogo::TipoInimigo::Atirador}};
+    auto r = jogo::atualizarProjeteis(p, m.grade, {1.5f, 1.5f}, 0.25f, 1.0f);
+    CHECK(r.dano == 4);
+    CHECK(r.autor == jogo::TipoInimigo::Atirador);
+    CHECK(p.empty());
+}
+
+TEST_CASE("projétil rápido não atravessa o jogador num passo grande") {
+    auto m = mundo::carregarDeTexto({"#########", "#@......#", "#########"});
+    std::vector<jogo::Projetil> p{{{7.5f, 1.5f}, {-10.0f, 0.0f}, 3, jogo::TipoInimigo::Atirador}};
+    auto r = jogo::atualizarProjeteis(p, m.grade, {3.5f, 1.5f}, 0.25f, 0.6f);  // anda 6 células de uma vez
+    CHECK(r.dano == 3);
+}

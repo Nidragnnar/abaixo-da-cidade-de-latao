@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <glm/vec2.hpp>
@@ -27,6 +28,7 @@ struct Andar {
     glm::vec2 inicio;
     glm::ivec2 elevador;            // célula do elevador de carga
     std::optional<glm::vec2> chave;  // válvula-chave, só em andar com comporta trancada
+    std::vector<std::pair<char, glm::vec2>> marcas;  // só em andares de texto (testes)
 };
 
 // Semente própria de cada andar, derivada da semente da partida (permite começar em qualquer andar)

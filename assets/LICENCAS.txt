@@ -33,3 +33,12 @@ Alteração em todas: reduzidas para 64x64 por ferramentas/preparar_texturas.ps1
 PROVISÓRIOS, feitos para este jogo por ferramentas/gerar_sprites.ps1 (sem licença de terceiros):
   sprites/valvula_chave.png   válvula de latão
   sprites/elevador.png        gaiola do elevador de carga
+
+Fonte "Press Start 2P" — The Press Start 2P Project Authors (CodeMan38) — SIL Open Font License 1.1
+  https://github.com/google/fonts/tree/main/ofl/pressstart2p (commit 6c1dbe27dcf7d817d4b62cec033ba77fa8e2a5ec)
+  fonte/fonte.png é a fonte rasterizada em 8x8 por ferramentas/gerar_fonte.ps1; texto da licença em fonte/OFL_PressStart2P.txt
+
+PROVISÓRIOS, feitos para este jogo por ferramentas/gerar_inimigos.ps1 (sem licença de terceiros):
+  sprites/rato_0..6.png, automato_0..6.png, atirador_0..6.png, colosso_0..6.png   inimigos
+  sprites/projetil.png                                                            tiro do Atirador
+  armas/chave_0..1.png, revolver_0..2.png                                         armas na mão

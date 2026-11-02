@@ -27,7 +27,7 @@ MapaCarregado carregarDeTexto(const std::vector<std::string>& linhas) {
     const int largura = static_cast<int>(linhas[0].size());
     const int altura = static_cast<int>(linhas.size());
 
-    MapaCarregado mapa{Grade(largura, altura), {}, {}, {}};
+    MapaCarregado mapa{Grade(largura, altura), {}, {}, {}, {}};
     int inicios = 0;
     for (int y = 0; y < altura; ++y) {
         if (static_cast<int>(linhas[y].size()) != largura)
@@ -46,6 +46,13 @@ MapaCarregado carregarDeTexto(const std::vector<std::string>& linhas) {
                 case 'E':
                     mapa.grade.definir(x, y, Celula::Elevador);
                     mapa.elevador = glm::ivec2(x, y);
+                    break;
+                case 'r':
+                case 'a':
+                case 'g':
+                case 'c':
+                    mapa.grade.definir(x, y, Celula::Chao);
+                    mapa.marcas.push_back({linhas[y][x], glm::vec2(x + 0.5f, y + 0.5f)});
                     break;
                 case 'K':
                     mapa.grade.definir(x, y, Celula::Chao);

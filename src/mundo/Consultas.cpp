@@ -7,7 +7,11 @@
 
 namespace mundo {
 
-bool temLinhaDeVisao(const Grade& g, glm::vec2 de, glm::vec2 para) {
+namespace {
+
+// Percorre as células do segmento (Amanatides–Woo); `solida(x, y)` diz o que barra o caminho
+template <typename Solida>
+bool segmentoLivre(glm::vec2 de, glm::vec2 para, Solida solida) {
     int cx = static_cast<int>(std::floor(de.x)), cy = static_cast<int>(std::floor(de.y));
     const int alvoX = static_cast<int>(std::floor(para.x)), alvoY = static_cast<int>(std::floor(para.y));
     const glm::vec2 d = para - de;
@@ -19,7 +23,7 @@ bool temLinhaDeVisao(const Grade& g, glm::vec2 de, glm::vec2 para) {
     float tX = d.x != 0 ? ((passoX > 0 ? cx + 1 - de.x : de.x - cx) * deltaX) : INF;
     float tY = d.y != 0 ? ((passoY > 0 ? cy + 1 - de.y : de.y - cy) * deltaY) : INF;
 
-    auto bloqueia = [&](int x, int y) { return !(x == alvoX && y == alvoY) && g.solida(x, y); };
+    auto bloqueia = [&](int x, int y) { return !(x == alvoX && y == alvoY) && solida(x, y); };
     while (cx != alvoX || cy != alvoY) {
         if (std::abs(tX - tY) < 1e-6f) {
             // Passa exatamente pela quina: as duas vizinhas precisam estar livres
@@ -36,9 +40,20 @@ bool temLinhaDeVisao(const Grade& g, glm::vec2 de, glm::vec2 para) {
             tY += deltaY;
         }
         if (bloqueia(cx, cy)) return false;
-        if (tX > 1.0f + 1e-4f && tY > 1.0f + 1e-4f) break;  // segurança contra erro de arredondamento
+        // Segurança contra erro de arredondamento: só é visível se chegou mesmo ao destino
+        if (tX > 1.0f + 1e-4f && tY > 1.0f + 1e-4f) return cx == alvoX && cy == alvoY;
     }
     return true;
+}
+
+}
+
+bool temLinhaDeVisao(const Grade& g, glm::vec2 de, glm::vec2 para) {
+    return segmentoLivre(de, para, [&](int x, int y) { return g.solida(x, y); });
+}
+
+bool temPassagemLivre(const Grade& g, glm::vec2 de, glm::vec2 para) {
+    return segmentoLivre(de, para, [&](int x, int y) { return g.bloqueiaPassagem(x, y); });
 }
 
 Exploracao::Exploracao(int largura, int altura)
@@ -79,13 +94,14 @@ std::optional<glm::ivec2> celulaAFrente(const Grade& g, glm::vec2 posicao, float
     return std::nullopt;
 }
 
-std::vector<int> distanciasNaGrade(const Grade& g, glm::ivec2 origem, bool atravessaTrancada) {
+std::vector<int> distanciasNaGrade(const Grade& g, glm::ivec2 origem, bool atravessaTrancada, bool atravessaElevador) {
     const int L = g.largura(), A = g.altura();
     std::vector<int> dist(static_cast<size_t>(L) * A, -1);
     auto passa = [&](int x, int y) {
         if (x < 0 || y < 0 || x >= L || y >= A) return false;
         const Celula c = g.em(x, y);
-        return c != Celula::Parede && (atravessaTrancada || c != Celula::ComportaTrancada);
+        return c != Celula::Parede && (atravessaTrancada || c != Celula::ComportaTrancada) &&
+               (atravessaElevador || c != Celula::Elevador);
     };
     if (!passa(origem.x, origem.y)) return dist;
 

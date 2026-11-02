@@ -26,7 +26,8 @@ com masmorra aleatória, combate, itens, níveis, morte permanente e placar, sem
 ### Fora da v1 (etapas futuras)
 
 Classes de personagem, engenhocas/magias (equivalente steampunk das magias), atributos estilo Arena,
-salvar no meio da partida, chefes, olhar para cima e para baixo, controle (gamepad).
+salvar no meio da partida, chefes, controle (gamepad).
+Plataformas com alturas diferentes e inimigos voadores ficam para a Etapa 6 (seção 13), depois do pacote da v1.
 
 ## 2. Base técnica
 
@@ -109,7 +110,9 @@ a comporta trancada; a mesma semente gera a mesma grade.
 - **Sprites:** inimigos, itens, projéteis e elevador são quadros 2D que giram só no eixo vertical para encarar a câmera,
   com descarte de pixels transparentes (sem ordenar por profundidade). Inimigos têm animações por quadros:
   parado, andar, atacar, morrer.
-- **Câmera:** altura dos olhos 0,5; campo de visão horizontal de 75°; sem olhar para cima/baixo na v1.
+- **Câmera:** altura dos olhos 0,5; campo de visão horizontal de 75°; olhar para cima e para baixo com o mouse,
+  limitado a 60° (pedido do Nidragnnar durante a etapa 3). Os sprites continuam girando só no eixo vertical.
+  O revólver mira na vertical com tolerância de 4° (mira automática leve); há uma mira pequena no centro da tela.
 - **Colisão:** jogador e inimigos são círculos (raio 0,25) que deslizam ao longo das paredes e comportas fechadas.
 - **Automapa (Tab):** visão 2D de cima das células já vistas pelo jogador, com a posição e a direção dele.
 
@@ -120,7 +123,7 @@ a comporta trancada; a mesma semente gera a mesma grade.
 | Tecla | Ação |
 |---|---|
 | W A S D | andar e andar de lado |
-| Mouse (horizontal) | girar |
+| Mouse | girar e olhar para cima/baixo |
 | Clique esquerdo | atacar com a arma na mão |
 | Q ou roda do mouse | alternar entre arma branca e arma de fogo |
 | R | recarregar a arma de fogo |
@@ -262,6 +265,10 @@ Cada etapa termina jogável, compilada e testada pelo Claude; o Nidragnnar testa
    qualidade e modificações, inventário, XP e níveis, HUD completo.
 5. **Acabamento e pacote:** sons e música, menus e opções, `--demo`, `.zip` com `Roguelike.exe` + DLLs + `assets\`
    + `COMO_JOGAR.txt` (guia simples para amigos).
+6. **Verticalidade (depois da v1):** altura de chão e teto por célula, degraus e rampas, paredes de alturas variadas,
+   colisão vertical (e decidir se há pulo e queda), gerador com níveis, inimigos que sobem escadas, inimigos voadores
+   (ex.: drone a vapor, morcego mecânico) com altura própria e tiros/projéteis em 3D. Precisa de especificação própria
+   antes do plano.
 
 ## 14. Distribuição
 
