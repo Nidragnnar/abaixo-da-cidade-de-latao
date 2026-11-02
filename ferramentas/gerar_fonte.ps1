@@ -4,7 +4,7 @@ $ErrorActionPreference = "Stop"
 Set-Location (Split-Path $PSScriptRoot)
 Add-Type -AssemblyName System.Drawing
 
-$caracteres = (-join (32..126 | ForEach-Object { [char]$_ })) + "ÁÂÃÀÇÉÊÍÓÔÕÚáâãàçéêíóôõú—º"
+$caracteres = (-join (32..126 | ForEach-Object { [char]$_ })) + "ÁÂÃÀÇÉÊÍÓÔÕÚáâãàçéêíóôõú—º–×"
 $colunas = 16
 $linhas = [math]::Ceiling($caracteres.Length / $colunas)
 

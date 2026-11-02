@@ -9,6 +9,8 @@
 #include "jogo/Armas.h"
 #include "jogo/Comandos.h"
 #include "jogo/Inimigos.h"
+#include "jogo/Inventario.h"
+#include "jogo/Itens.h"
 #include "jogo/Jogador.h"
 #include "jogo/Projeteis.h"
 #include "mundo/Consultas.h"
@@ -21,7 +23,10 @@ constexpr float ALCANCE_USAR = 1.5f;
 constexpr float RAIO_PEGAR = 0.6f;
 constexpr float DURACAO_MENSAGEM = 2.0f;
 constexpr int VIDA_INICIAL = 30;
-constexpr int DEFESA_INICIAL = 1;      // casaco de couro (até o inventário da etapa 4)
+constexpr int XP_POR_NIVEL = 20;        // XP para o próximo nível = 20 × nível
+constexpr int CURA_TONICO = 15;
+constexpr float ALCANCE_PEGAR = 1.5f;   // pegar item com E
+constexpr float LARGURA_PEGAR = 0.4f;   // quanto o item pode estar fora da linha do olhar
 constexpr float DURACAO_CLARAO = 0.05f;  // o disparo ilumina a cena
 
 // Estado de uma partida: andar, jogador, armas, inimigos, projéteis, comportas, chave, exploração e mensagens
@@ -54,22 +59,42 @@ public:
     uint32_t semente() const { return semente_; }
 
     int vida() const { return vida_; }
-    int vidaMaxima() const { return vidaMaxima_; }
-    int defesa() const { return DEFESA_INICIAL; }
+    int vidaMaxima() const { return atributos_.vidaMaxima; }
+    int defesa() const { return atributos_.defesa; }
+    const Inventario& inventario() const { return inventario_; }
+    const Atributos& atributos() const { return atributos_; }
     const std::vector<Inimigo>& inimigos() const { return inimigos_; }
     const std::vector<Projetil>& projeteis() const { return projeteis_; }
+    const std::vector<CoisaNoChao>& chao() const { return chao_; }
     const Armas& armas() const { return armas_; }
     bool morto() const { return morto_; }
     std::string_view causaDaMorte() const { return causa_; }
     int inimigosDestruidos() const { return destruidos_; }
-    int nivel() const { return 1; }        // etapa 4
-    int engrenagens() const { return 0; }  // etapa 4
+    int nivel() const { return nivel_; }
+    int xp() const { return xp_; }
+    int xpParaProximo() const { return XP_POR_NIVEL * nivel_; }
+    int engrenagens() const { return engrenagens_; }
     int pontuacao() const;
     float clarao() const { return clarao_; }
     float tempoDesdeDano() const { return tempoDesdeDano_; }
 
+    // Tela do inventário: equipa (arma/armadura) ou bebe (tônico); larga no chão à frente; troca dois espaços
+    void usarEspaco(int i);
+    void largarEspaco(int i);
+    void trocarEspacos(int a, int b) { inventario_.trocar(a, b); }
+
+    // Só para testes
+    void colocarNoChao(CoisaNoChao c) { chao_.push_back(std::move(c)); }
+    void ganharXp(int quanto);
+    void ferirParaTeste(int quanto) { vida_ -= quanto; }
+
 private:
     void usar();
+    bool pegarItemAFrente();  // falso se não pegou (nada à frente ou inventário cheio)
+    void pegarAoPassar();     // munição e engrenagens
+    void recompensarDestruidos();
+    void beberTonico(int i);
+    void recalcularAtributos();
     void descer();
     void avisar(std::string texto);
     void receberDano(int bruto, TipoInimigo autor);
@@ -87,10 +112,15 @@ private:
 
     std::mt19937 rng_;  // dano e dispersão (a população usa a semente do andar)
     int vida_ = VIDA_INICIAL;
-    int vidaMaxima_ = VIDA_INICIAL;
+    int nivel_ = 1;
+    int xp_ = 0;
+    int engrenagens_ = 0;
+    Inventario inventario_;
+    Atributos atributos_ = calcularAtributos(inventario_, 1);
     Armas armas_;
     std::vector<Inimigo> inimigos_;
     std::vector<Projetil> projeteis_;
+    std::vector<CoisaNoChao> chao_;
     std::vector<int> campo_;            // distâncias até o jogador, para a IA
     float desdeCampo_ = 1e9f;
     bool morto_ = false;

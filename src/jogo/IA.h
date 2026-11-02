@@ -28,8 +28,7 @@ struct MundoIA {
 };
 
 struct EventosIA {
-    int dano = 0;  // bruto, antes da defesa do jogador
-    std::optional<TipoInimigo> autor;
+    std::vector<Golpe> golpes;  // um por acerto, na ordem (a defesa vale para cada um)
     std::vector<glm::ivec2> comportasParaAbrir;
     std::vector<Projetil> tiros;
 };

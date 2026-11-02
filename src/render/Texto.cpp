@@ -39,7 +39,7 @@ const std::u32string& caracteresFonte() {
     static const std::u32string lista = [] {
         std::u32string s;
         for (char32_t c = 32; c <= 126; ++c) s.push_back(c);
-        s += U"ÁÂÃÀÇÉÊÍÓÔÕÚáâãàçéêíóôõú—º";
+        s += U"ÁÂÃÀÇÉÊÍÓÔÕÚáâãàçéêíóôõú—º–×";
         return s;
     }();
     return lista;

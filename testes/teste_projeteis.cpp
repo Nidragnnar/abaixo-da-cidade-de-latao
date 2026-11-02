@@ -22,8 +22,9 @@ TEST_CASE("projétil acerta o jogador e informa o autor") {
     auto m = mundo::carregarDeTexto({"#######", "#@....#", "#######"});
     std::vector<jogo::Projetil> p{{{5.5f, 1.5f}, {-10.0f, 0.0f}, 4, jogo::TipoInimigo::Atirador}};
     auto r = jogo::atualizarProjeteis(p, m.grade, {1.5f, 1.5f}, 0.25f, 1.0f);
-    CHECK(r.dano == 4);
-    CHECK(r.autor == jogo::TipoInimigo::Atirador);
+    REQUIRE(r.golpes.size() == 1);
+    CHECK(r.golpes[0].dano == 4);
+    CHECK(r.golpes[0].autor == jogo::TipoInimigo::Atirador);
     CHECK(p.empty());
 }
 
@@ -31,5 +32,6 @@ TEST_CASE("projétil rápido não atravessa o jogador num passo grande") {
     auto m = mundo::carregarDeTexto({"#########", "#@......#", "#########"});
     std::vector<jogo::Projetil> p{{{7.5f, 1.5f}, {-10.0f, 0.0f}, 3, jogo::TipoInimigo::Atirador}};
     auto r = jogo::atualizarProjeteis(p, m.grade, {3.5f, 1.5f}, 0.25f, 0.6f);  // anda 6 células de uma vez
-    CHECK(r.dano == 3);
+    REQUIRE(r.golpes.size() == 1);
+    CHECK(r.golpes[0].dano == 3);
 }

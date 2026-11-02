@@ -42,3 +42,7 @@ PROVISÓRIOS, feitos para este jogo por ferramentas/gerar_inimigos.ps1 (sem lice
   sprites/rato_0..6.png, automato_0..6.png, atirador_0..6.png, colosso_0..6.png   inimigos
   sprites/projetil.png                                                            tiro do Atirador
   armas/chave_0..1.png, revolver_0..2.png                                         armas na mão
+
+PROVISÓRIOS, feitos para este jogo por ferramentas/gerar_itens.ps1 (sem licença de terceiros):
+  sprites/item_*.png                                     itens, munição e engrenagens (no chão e como ícone)
+  armas/sabre_0..1, martelo_0..1, bacamarte_0..2, tesla_0..1.png   armas novas na mão

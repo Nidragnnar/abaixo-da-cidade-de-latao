@@ -20,8 +20,7 @@ struct Projetil {
 };
 
 struct ResultadoProjeteis {
-    int dano = 0;
-    std::optional<TipoInimigo> autor;  // de quem foi o último acerto
+    std::vector<Golpe> golpes;  // um por projétil que acertou
 };
 
 // Move em subpassos de no máximo 0,1; some na parede ou ao acertar o jogador

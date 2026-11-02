@@ -11,6 +11,13 @@
 
 namespace {
 
+int somaDano(const jogo::EventosIA& e) {
+    int s = 0;
+    for (const auto& g : e.golpes) s += g.dano;
+    return s;
+}
+
+
 // Roda a IA por alguns segundos, recalculando o campo a cada 0,5 s e abrindo na hora as comportas pedidas
 jogo::EventosIA simular(std::vector<jogo::Inimigo>& v, mundo::Grade& g, glm::vec2 jogador, float segundos) {
     std::mt19937 rng(3);
@@ -25,8 +32,7 @@ jogo::EventosIA simular(std::vector<jogo::Inimigo>& v, mundo::Grade& g, glm::vec
         }
         auto e = jogo::atualizarInimigos(v, {g, jogador, campo, rng}, 1.0f / 60);
         for (auto c : e.comportasParaAbrir) g.definir(c.x, c.y, mundo::Celula::ComportaAberta);
-        total.dano += e.dano;
-        if (e.autor) total.autor = e.autor;
+        total.golpes.insert(total.golpes.end(), e.golpes.begin(), e.golpes.end());
         total.tiros.insert(total.tiros.end(), e.tiros.begin(), e.tiros.end());
         desdeCampo += 1.0f / 60;
     }
@@ -56,9 +62,10 @@ TEST_CASE("autômato prepara o golpe e acerta quem ficou perto") {
     auto a = mundo::andarDeTexto({"#####", "#@a.#", "#####"}, 1);
     auto v = jogo::inimigosDasMarcas(a);
     auto eventos = simular(v, a.grade, a.inicio, 0.7f);  // aproxima até 0,9 e prepara 0,5 s
-    CHECK(eventos.dano >= 4);
-    CHECK(eventos.dano <= 6);
-    CHECK(eventos.autor == jogo::TipoInimigo::Automato);
+    CHECK(somaDano(eventos) >= 4);
+    CHECK(somaDano(eventos) <= 6);
+    REQUIRE_FALSE(eventos.golpes.empty());
+    CHECK(eventos.golpes.back().autor == jogo::TipoInimigo::Automato);
 }
 
 TEST_CASE("golpe não acerta se o jogador se afastou durante o preparo") {
@@ -67,7 +74,7 @@ TEST_CASE("golpe não acerta se o jogador se afastou durante o preparo") {
     simular(v, a.grade, a.inicio, 0.1f);  // começou a preparar
     REQUIRE(v[0].estado == jogo::EstadoInimigo::Preparando);
     auto eventos = simular(v, a.grade, {6.5f, 1.5f}, 0.5f);  // jogador longe no fim do preparo
-    CHECK(eventos.dano == 0);
+    CHECK(eventos.golpes.empty());
 }
 
 TEST_CASE("atirador mantém distância e atira") {
@@ -129,7 +136,7 @@ TEST_CASE("destruído fica parado e só conta o tempo") {
     v[0].estado = jogo::EstadoInimigo::Destruido;
     auto antes = v[0].posicao;
     auto eventos = simular(v, a.grade, a.inicio, 2.0f);
-    CHECK(eventos.dano == 0);
+    CHECK(eventos.golpes.empty());
     CHECK(v[0].posicao == antes);
     CHECK(v[0].tempoNoEstado == doctest::Approx(2.0f).epsilon(0.02));
 }
@@ -151,4 +158,18 @@ TEST_CASE("inimigo contorna o elevador no meio da sala") {
     jogo::acordarPorBarulho(v, a.inicio, 20.0f);
     simular(v, a.grade, a.inicio, 6.0f);
     CHECK(glm::distance(v[0].posicao, a.inicio) <= 1.0f);
+}
+
+TEST_CASE("dois golpes no mesmo passo chegam separados") {
+    auto a = mundo::andarDeTexto({"#####", "#r@r#", "#####"}, 1);
+    auto v = jogo::inimigosDasMarcas(a);
+    auto e = simular(v, a.grade, {2.5f, 1.5f}, 0.45f);  // aproximam, preparam juntos (0,3 s) e mordem; recuperação 0,6 s
+    CHECK(e.golpes.size() == 2);
+}
+
+TEST_CASE("atirador encurralado atira de perto") {
+    auto a = mundo::andarDeTexto({"########", "#g.@...#", "########"}, 2);
+    auto v = jogo::inimigosDasMarcas(a);
+    auto e = simular(v, a.grade, {3.5f, 1.5f}, 2.5f);
+    CHECK(e.tiros.size() >= 1);
 }

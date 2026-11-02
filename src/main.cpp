@@ -29,10 +29,12 @@
 #include "render/Desenho2D.h"
 #include "render/GeometriaMasmorra.h"
 #include "render/Hud.h"
+#include "render/Icones.h"
 #include "render/MalhaGPU.h"
 #include "render/Shader.h"
 #include "render/Sprites.h"
 #include "render/TelaBaixa.h"
+#include "render/TelaInventario.h"
 #include "render/Texturas.h"
 #include "render/Zonas.h"
 
@@ -50,6 +52,7 @@ struct Opcoes {
     bool descrever = false;              // --descrever: grava o andar no log e sai sem janela
     std::optional<glm::vec2> posicao;    // --posicao <x> <z>: começa nesse ponto (testes)
     bool invencivel = false;             // --invencivel: o dano não reduz a vida (observar a IA)
+    bool inventario = false;             // --inventario: começa com o inventário aberto (capturas)
     std::string dados;                   // --dados <pasta>: placar fora do %APPDATA% (testes)
 };
 
@@ -67,6 +70,7 @@ Opcoes lerOpcoes(int argc, char** argv) {
         else if (arg == "--mapa-completo") o.mapaCompleto = true;
         else if (arg == "--descrever") o.descrever = true;
         else if (arg == "--invencivel") o.invencivel = true;
+        else if (arg == "--inventario") o.inventario = true;
         else if (arg == "--dados" && temValor) o.dados = argv[++i];
         else if (arg == "--posicao" && i + 2 < argc) {
             const float x = std::stof(argv[++i]);
@@ -94,6 +98,12 @@ void descreverAndar(uint32_t semente, int numero) {
                                   a.elevador.x, a.elevador.y));
     for (const jogo::Inimigo& i : jogo::gerarInimigos(a, semente))
         plataforma::logar(std::format("  {} em ({:.1f}, {:.1f})", jogo::dados(i.tipo).nome, i.posicao.x, i.posicao.y));
+    for (const jogo::CoisaNoChao& c : jogo::gerarChao(a, semente)) {
+        std::string o = "engrenagens";
+        if (const auto* item = std::get_if<jogo::Item>(&c.conteudo)) o = jogo::nomeItem(*item);
+        else if (const auto* m = std::get_if<jogo::MunicaoNoChao>(&c.conteudo)) o = std::format("caixa de munição ({})", m->quantidade);
+        plataforma::logar(std::format("  chão: {} em ({:.1f}, {:.1f})", o, c.posicao.x, c.posicao.y));
+    }
 }
 
 // Lê a janela inteira e grava como BMP
@@ -133,14 +143,57 @@ std::vector<std::filesystem::path> arquivosDeSprites() {
     for (const char* inimigo : {"rato", "automato", "atirador", "colosso"})
         for (int q = 0; q < render::QUADROS_POR_INIMIGO; ++q)
             a.push_back(plataforma::caminhoAsset(std::format("sprites/{}_{}.png", inimigo, q)));
+    // Itens, munição e engrenagens (render/Icones.h)
+    for (const char* item : {"chave_inglesa", "sabre", "martelo", "revolver", "bacamarte", "tesla", "casaco", "colete",
+                             "armadura", "tonico", "balas", "cartuchos", "celulas", "engrenagens"})
+        a.push_back(plataforma::caminhoAsset(std::format("sprites/item_{}.png", item)));
     return a;
 }
 
 std::vector<std::filesystem::path> arquivosDeArmas() {
-    // Mesma ordem de render::QuadroArma
-    return {plataforma::caminhoAsset("armas/chave_0.png"), plataforma::caminhoAsset("armas/chave_1.png"),
-            plataforma::caminhoAsset("armas/revolver_0.png"), plataforma::caminhoAsset("armas/revolver_1.png"),
-            plataforma::caminhoAsset("armas/revolver_2.png")};
+    // Mesma ordem de render::quadroArma
+    std::vector<std::filesystem::path> a;
+    for (const auto& [arma, quadros] : {std::pair{"chave", 2}, std::pair{"revolver", 3}, std::pair{"sabre", 2},
+                                        std::pair{"martelo", 2}, std::pair{"bacamarte", 3}, std::pair{"tesla", 2}})
+        for (int q = 0; q < quadros; ++q) a.push_back(plataforma::caminhoAsset(std::format("armas/{}_{}.png", arma, q)));
+    return a;
+}
+
+// Camada e tamanho do sprite de algo no chão
+render::Sprite spriteDoChao(const jogo::CoisaNoChao& c) {
+    int camada = render::ICONE_ENGRENAGENS;
+    if (const auto* item = std::get_if<jogo::Item>(&c.conteudo)) camada = render::iconeDoItem(item->tipo);
+    else if (const auto* m = std::get_if<jogo::MunicaoNoChao>(&c.conteudo)) camada = render::iconeDaMunicao(m->tipo);
+    return {c.posicao, camada, 0.35f, 0.35f};
+}
+
+// O que o HUD mostra, tirado da partida
+render::EstadoHud estadoHud(const jogo::Partida& p) {
+    const jogo::Armas& armas = p.armas();
+    const jogo::Inventario& inv = p.inventario();
+    const jogo::DadosArma& fogo = jogo::dadosArma(inv.armaDeFogo().tipo);
+    render::EstadoHud e;
+    e.vida = p.vida();
+    e.vidaMaxima = p.vidaMaxima();
+    e.nivel = p.nivel();
+    e.xp = p.xp();
+    e.xpProximo = p.xpParaProximo();
+    e.engrenagens = p.engrenagens();
+    e.andar = p.andar().numero;
+    e.armaDeFogoAtiva = armas.ativa == jogo::ArmaAtiva::Fogo;
+    e.arma = e.armaDeFogoAtiva ? inv.armaDeFogo().tipo : inv.armaBranca().tipo;
+    e.carga = inv.armaDeFogo().carga;
+    e.reserva = armas.municao.de(fogo.municao);
+    e.municao = fogo.municao;
+    e.semRecarga = fogo.carga == 0;
+    e.recarregando = armas.recarga > 0;
+    e.animacao = armas.animacao;
+    e.tempoDesdeDano = p.tempoDesdeDano();
+    e.mensagem = p.mensagem();
+    for (int k = 0; k < 4; ++k)
+        if (const auto& item = inv.espaco(k))
+            e.rapidos[static_cast<size_t>(k)] = {render::iconeDoItem(item->tipo), item->quantidade};
+    return e;
 }
 
 // Grava o resultado no placar; devolve a colocação (0 se ficou de fora ou não deu para gravar)
@@ -152,7 +205,9 @@ int registrarNoPlacar(const jogo::Partida& p) {
                           arquivo.string());
         return 0;
     }
-    if (leitura.estavaCorrompido) plataforma::logar("placar.txt corrompido: renomeado para placar.txt.corrompido");
+    if (leitura.estavaCorrompido)
+        plataforma::logar(leitura.renomeado ? "placar.txt corrompido: renomeado para placar.txt.corrompido"
+                                            : "placar.txt corrompido e não foi possível renomeá-lo; será substituído");
     int posicao = 0;
     const auto novo = jogo::inserirNoPlacar(
         leitura.registros,
@@ -219,6 +274,8 @@ int main(int argc, char** argv) {
         int andarPreparado = 0;
         bool placarGravado = false;
         int posicaoPlacar = 0;
+        float tempoMorto = 0.0f;  // Enter só vale um pouco depois da morte (não pula a tela de fim)
+        std::optional<int> arrastando;  // espaço do inventário sendo arrastado
 
         // Remonta o que depende do andar (malha fixa e cor da zona)
         auto prepararAndar = [&] {
@@ -236,6 +293,7 @@ int main(int argc, char** argv) {
             if (opcoes.mapaCompleto) partida->revelarMapa();
             placarGravado = false;
             posicaoPlacar = 0;
+            tempoMorto = 0.0f;
             passo.zerar();
             prepararAndar();
         };
@@ -244,6 +302,7 @@ int main(int argc, char** argv) {
         partida->definirInclinacao(glm::radians(opcoes.inclinacaoGraus));
         if (opcoes.posicao) partida->definirPosicao(*opcoes.posicao);
         anterior = partida->jogador();
+        if (opcoes.inventario) entrada.abrirInventario(true);
 
         std::string tituloAtual;
         int quadro = 0;
@@ -266,8 +325,8 @@ int main(int argc, char** argv) {
             if (modoCaptura) dt = passo.passo();  // captura: um passo por quadro, sem depender do relógio
             relogio += static_cast<float>(dt);
 
-            // Na captura a lógica roda sozinha (sem comandos) para os inimigos agirem
-            if (entrada.capturado() || modoCaptura) {
+            // Na captura a lógica roda sozinha (sem comandos) para os inimigos agirem; o inventário aberto pausa
+            if ((entrada.capturado() || modoCaptura) && !entrada.inventarioAberto()) {
                 const int passos = passo.adicionar(dt);
                 for (int i = 0; i < passos; ++i) {
                     anterior = partida->jogador();
@@ -286,10 +345,14 @@ int main(int argc, char** argv) {
                 // Capturas de teste só gravam placar numa pasta indicada com --dados (nunca no %APPDATA% do jogador)
                 if (!modoCaptura || !opcoes.dados.empty()) posicaoPlacar = registrarNoPlacar(*partida);
                 placarGravado = true;
+                if (entrada.inventarioAberto()) entrada.abrirInventario(false);
                 entrada.soltarMouse();
+                arrastando.reset();
             }
             // Na captura o teclado é ignorado (a janela rouba o foco e pode receber teclas digitadas em outro lugar)
-            if (entrada.pediuNovaPartida() && partida->morto() && !modoCaptura) novaPartida(std::random_device{}(), 1);
+            if (partida->morto()) tempoMorto += static_cast<float>(dt);
+            const bool pediuNova = entrada.pediuNovaPartida();  // consome sempre (Enter antes da hora não fica guardado)
+            if (pediuNova && partida->morto() && tempoMorto > 0.5f && !modoCaptura) novaPartida(std::random_device{}(), 1);
 
             // Andar novo: remonta a malha e não interpola a partir do andar anterior
             if (partida->trocasDeAndar() != andarPreparado) prepararAndar();
@@ -300,8 +363,9 @@ int main(int argc, char** argv) {
             const float incl = glm::mix(anterior.inclinacao, partida->jogador().inclinacao, alfa);
 
             // Título só muda quando o texto muda
-            const std::string titulo =
-                entrada.capturado() || partida->morto() ? "Roguelike" : "Roguelike  (clique para jogar, Esc solta o mouse)";
+            const std::string titulo = entrada.inventarioAberto()                      ? "Roguelike — Inventário"
+                                       : entrada.capturado() || partida->morto() ? "Roguelike"
+                                                                                 : "Roguelike  (clique para jogar, Esc solta o mouse)";
             if (titulo != tituloAtual) {
                 SDL_SetWindowTitle(janela.sdl(), titulo.c_str());
                 tituloAtual = titulo;
@@ -323,8 +387,9 @@ int main(int argc, char** argv) {
             }), true);
             malhaComportas.desenhar();
 
-            // Sprites: elevador, válvula, inimigos e projéteis
+            // Sprites: elevador, válvula, coisas no chão, inimigos e projéteis
             std::vector<render::Sprite> sprites;
+            for (const jogo::CoisaNoChao& c : partida->chao()) sprites.push_back(spriteDoChao(c));
             sprites.push_back({glm::vec2(partida->andar().elevador) + 0.5f, render::SpriteElevador, 0.9f, 1.0f});
             if (partida->andar().chave)
                 sprites.push_back({*partida->andar().chave, render::SpriteValvulaChave, 0.4f, 0.4f});
@@ -340,19 +405,44 @@ int main(int argc, char** argv) {
             malhaSprites.desenhar();
 
             // HUD (arma na mão por baixo, depois barras/flash e texto)
-            const jogo::Armas& armas = partida->armas();
-            const render::ElementosHud hud = render::construirHud(
-                {partida->vida(), partida->vidaMaxima(), armas.ativa, armas.carga, armas.reserva, armas.recarga > 0,
-                 armas.animacao, partida->tempoDesdeDano(), partida->mensagem(), partida->andar().numero, relogio},
-                telaL, telaA);
-            if (!partida->morto()) desenhoTextura.desenhar(hud.arma, texturasArmas, telaL, telaA);
-            desenho2D.desenhar(hud.cores, telaL, telaA);
-            desenhoTextura.desenhar(hud.texto, fonte, telaL, telaA);
+            const render::ElementosHud hud = render::construirHud(estadoHud(*partida), telaL, telaA);
+            if (!entrada.inventarioAberto()) {  // o inventário cobre o HUD
+                if (!partida->morto()) desenhoTextura.desenhar(hud.arma, texturasArmas, telaL, telaA);
+                desenho2D.desenhar(hud.cores, telaL, telaA);
+                desenhoTextura.desenhar(hud.icones, texturasSprites, telaL, telaA);
+                desenhoTextura.desenhar(hud.texto, fonte, telaL, telaA);
+            }
 
             if (entrada.mapaVisivel() || opcoes.mapaCompleto)
                 desenho2D.desenhar(render::construirAutomapa(partida->andar().grade, partida->exploracao(), pos, ang,
                                                              partida->andar().chave, telaL, telaA),
                                    telaL, telaA);
+
+            // Inventário: clique usa/equipa, arrastar troca, botão direito larga no chão
+            if (entrada.inventarioAberto()) {
+                int janelaL = 0, janelaA = 0;
+                SDL_GetWindowSize(janela.sdl(), &janelaL, &janelaA);
+                const glm::vec2 mouse = render::janelaParaTelaBaixa(entrada.posicaoMouse(), {janelaL, janelaA},
+                                                                    janela.tamanhoDesenhavel(), telaL, telaA);
+                const render::LayoutInventario layout = render::layoutInventario(telaL, telaA);
+                const std::optional<int> sob = render::espacoSob(layout, mouse);
+                const bool sobEspaco = sob && *sob < jogo::ESPACOS_INVENTARIO;
+                const plataforma::CliqueInventario cliques = entrada.coletarCliques();
+                if (cliques.pressionou && sobEspaco && partida->inventario().espaco(*sob)) arrastando = *sob;
+                if (cliques.soltou && arrastando) {
+                    if (sobEspaco && *sob == *arrastando) partida->usarEspaco(*sob);
+                    else if (sobEspaco) partida->trocarEspacos(*arrastando, *sob);
+                    arrastando.reset();
+                }
+                if (cliques.direito && sobEspaco) partida->largarEspaco(*sob);
+                const render::ElementosInventario tela =
+                    render::construirInventario(partida->inventario(), layout, sob, arrastando, mouse);
+                desenho2D.desenhar(tela.cores, telaL, telaA);
+                desenhoTextura.desenhar(tela.icones, texturasSprites, telaL, telaA);
+                desenhoTextura.desenhar(tela.texto, fonte, telaL, telaA);
+            } else {
+                arrastando.reset();
+            }
 
             if (partida->morto()) {
                 const render::ElementosHud fim = render::construirTelaFim(

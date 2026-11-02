@@ -29,6 +29,7 @@ struct LeituraPlacar {
     std::vector<RegistroPlacar> registros;
     bool estavaCorrompido = false;
     bool erroDeLeitura = false;  // existe mas não abriu (bloqueado, sem permissão): não gravar por cima
+    bool renomeado = false;      // corrompido e o .corrompido foi mesmo criado
 };
 
 // Ausente: vazio. Linha inválida: o arquivo vira placar.txt.corrompido e o placar recomeça vazio.

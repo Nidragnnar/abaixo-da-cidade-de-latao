@@ -109,3 +109,12 @@ TEST_CASE("placar bloqueado por outro programa não é tratado como vazio") {
     CHECK_FALSE(lido.estavaCorrompido);
     CHECK(jogo::lerPlacar(pasta.caminho / "placar.txt").registros.size() == 1);  // nada se perdeu
 }
+
+TEST_CASE("corrompido informa se renomeou") {
+    PastaTemporaria pasta;
+    {
+        std::ofstream f(pasta.caminho / "placar.txt");
+        f << "lixo\n";
+    }
+    CHECK(jogo::lerPlacar(pasta.caminho / "placar.txt").renomeado);
+}

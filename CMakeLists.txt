@@ -31,6 +31,8 @@ add_library(nucleo STATIC
     src/jogo/IA.cpp
     src/jogo/Armas.cpp
     src/jogo/Placar.cpp
+    src/jogo/Itens.cpp
+    src/jogo/Inventario.cpp
     src/render/Camera.cpp
     src/render/GeometriaMasmorra.cpp
     src/render/Xadrez.cpp
@@ -43,6 +45,7 @@ add_library(nucleo STATIC
     src/render/Texto.cpp
     src/render/Hud.cpp
     src/render/AnimacaoInimigos.cpp
+    src/render/TelaInventario.cpp
 )
 configurar_alvo(nucleo)
 target_include_directories(nucleo PUBLIC ${CMAKE_SOURCE_DIR}/src)

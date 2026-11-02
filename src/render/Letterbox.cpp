@@ -13,4 +13,13 @@ Retangulo calcularLetterbox(int janelaL, int janelaA, int baseL, int baseA) {
     return {(janelaL - largura) / 2, (janelaA - altura) / 2, largura, altura};
 }
 
+glm::vec2 janelaParaTelaBaixa(glm::vec2 mouse, glm::ivec2 tamanhoJanela, glm::ivec2 tamanhoDesenhavel, int baseL, int baseA) {
+    if (tamanhoJanela.x <= 0 || tamanhoJanela.y <= 0) return {-1.0f, -1.0f};
+    const glm::vec2 escala = glm::vec2(tamanhoDesenhavel) / glm::vec2(tamanhoJanela);
+    const Retangulo r = calcularLetterbox(tamanhoDesenhavel.x, tamanhoDesenhavel.y, baseL, baseA);
+    if (r.largura <= 0 || r.altura <= 0) return {-1.0f, -1.0f};
+    const glm::vec2 pixel = mouse * escala - glm::vec2(r.x, r.y);
+    return pixel * glm::vec2(static_cast<float>(baseL) / r.largura, static_cast<float>(baseA) / r.altura);
+}
+
 }

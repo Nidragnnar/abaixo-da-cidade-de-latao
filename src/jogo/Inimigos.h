@@ -40,6 +40,13 @@ struct Inimigo {
     EstadoInimigo estado = EstadoInimigo::Parado;
     float tempoNoEstado = 0;
     glm::vec2 empurrao{0.0f};  // aplicado (e zerado) no próximo passo da IA
+    bool recompensado = false;  // destruído e já contado (XP e o que caiu no chão)
+};
+
+// Um acerto num alvo (dano bruto, antes da defesa) e quem o deu
+struct Golpe {
+    int dano;
+    TipoInimigo autor;
 };
 
 // Vida e dano já escalados para o andar

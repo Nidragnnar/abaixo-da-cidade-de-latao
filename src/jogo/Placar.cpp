@@ -90,6 +90,7 @@ LeituraPlacar lerPlacar(const std::filesystem::path& arquivo) {
         corrompido += ".corrompido";
         std::filesystem::remove(corrompido, erro);
         std::filesystem::rename(arquivo, corrompido, erro);
+        leitura.renomeado = !erro;
     }
     return leitura;
 }

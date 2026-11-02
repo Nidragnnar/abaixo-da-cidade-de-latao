@@ -7,20 +7,29 @@
 
 #include "jogo/Comandos.h"
 #include "jogo/Inimigos.h"
+#include "jogo/Inventario.h"
+#include "jogo/Itens.h"
 #include "mundo/Grade.h"
 
 namespace jogo {
 
-enum class ArmaAtiva { ChaveInglesa, Revolver };
+// Qual das duas armas equipadas está na mão
+enum class ArmaAtiva { Branca, Fogo };
 
-constexpr int CARGA_REVOLVER = 6;
-constexpr int RESERVA_MAXIMA_BALAS = 48;
 constexpr float DURACAO_ANIMACAO_ARMA = 0.2f;
 
+// Munição de reserva por tipo (fora do inventário)
+struct Municao {
+    int balas = 12, cartuchos = 0, celulas = 0;
+    int& de(TipoMunicao t);
+    int de(TipoMunicao t) const;
+};
+
+int maximoMunicao(TipoMunicao t);  // balas 48, cartuchos 20, células 12
+
 struct Armas {
-    ArmaAtiva ativa = ArmaAtiva::ChaveInglesa;
-    int carga = CARGA_REVOLVER;
-    int reserva = 12;
+    ArmaAtiva ativa = ArmaAtiva::Branca;
+    Municao municao;
     float intervalo = 0;  // espera até o próximo ataque
     float recarga = 0;    // > 0 enquanto recarrega
     float animacao = 0;   // > 0 enquanto o golpe/tiro aparece na mão
@@ -34,8 +43,10 @@ struct ResultadoAtaque {
     std::string mensagem;
 };
 
-// Troca, recarga e ataque da arma ativa (seção 4 da spec); a inclinação do olhar mira o revólver na vertical
-ResultadoAtaque atualizarArmas(Armas& a, const Comandos& c, glm::vec2 posicao, float angulo, const mundo::Grade& g,
-                               std::vector<Inimigo>& inimigos, std::mt19937& rng, float dt, float inclinacao = 0.0f);
+// Troca, recarga e ataque da arma equipada ativa (seção 4 da spec), com dano base do nível e bônus do item;
+// a inclinação do olhar mira as armas de fogo na vertical
+ResultadoAtaque atualizarArmas(Armas& a, Inventario& inv, const Atributos& atr, const Comandos& c, glm::vec2 posicao,
+                               float angulo, float inclinacao, const mundo::Grade& g, std::vector<Inimigo>& inimigos,
+                               std::mt19937& rng, float dt);
 
 }

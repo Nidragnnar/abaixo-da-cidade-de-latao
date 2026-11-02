@@ -2,6 +2,7 @@
 
 #include <ostream>  // o doctest precisa para mostrar string_view
 
+#include "jogo/IA.h"
 #include "jogo/Partida.h"
 #include "mundo/Gerador.h"
 
@@ -146,7 +147,7 @@ TEST_CASE("disparo faz clarão e conta destruídos") {
     tiro.atacar = true;
     p.atualizar(tiro, 1.0f / 60);
     CHECK(p.clarao() > 0.0f);
-    CHECK(p.armas().carga == 5);
+    CHECK(p.inventario().armaDeFogo().carga == 5);
     for (int i = 0; i < 60; ++i) p.atualizar(tiro, 1.0f / 60);  // segura o gatilho: o rato cai com 1 ou 2 tiros
     CHECK(p.inimigosDestruidos() == 1);
     CHECK(p.pontuacao() == 100 * 1 + 10 * 1 + 0 + 50 * 1);
@@ -156,13 +157,13 @@ TEST_CASE("descer limpa inimigos e projéteis e mantém vida e armas") {
     jogo::Partida p(mundo::andarDeTexto({"#########", "#@E....g#", "#########"}, 1), 7);
     passos(p, 90);  // o atirador já atirou
     int vida = p.vida();
-    int carga = p.armas().carga;
+    int carga = p.inventario().armaDeFogo().carga;
     passos(p, 1, apertarE());
     CHECK(p.andar().numero == 2);
     CHECK(p.projeteis().empty());
     CHECK(p.inimigos().size() >= 8);  // população nova do andar 2
     CHECK(p.vida() == vida);
-    CHECK(p.armas().carga == carga);
+    CHECK(p.inventario().armaDeFogo().carga == carga);
 }
 
 TEST_CASE("destroços somem depois de 10 s") {
@@ -173,4 +174,146 @@ TEST_CASE("destroços somem depois de 10 s") {
     REQUIRE(p.inimigosDestruidos() == 1);
     passos(p, 60 * 11);
     CHECK(p.inimigos().empty());
+}
+
+TEST_CASE("jogador não atravessa inimigo") {
+    jogo::Partida p(mundo::andarDeTexto({"#########", "#@..a...#", "#########"}, 1), 1);
+    p.tornarInvencivel();
+    passos(p, 120, {1, 0, 0});
+    CHECK(p.jogador().posicao.x <= p.inimigos()[0].posicao.x - (jogo::RAIO_JOGADOR + jogo::RAIO_INIMIGO) + 0.02f);
+}
+
+TEST_CASE("defesa vale para cada golpe do mesmo passo") {
+    jogo::Partida p(mundo::andarDeTexto({"#####", "#r@r#", "#####"}, 1), 3);
+    passos(p, 25);  // ~0,42 s: só a primeira dupla de mordidas
+    // cada mordida 2–3 menos defesa 1 = 1–2; somado 2–4 (com a regra antiga, 3–5)
+    CHECK(p.vida() >= 30 - 4);
+    CHECK(p.vida() <= 30 - 2);
+}
+
+TEST_CASE("E pega o item à frente") {
+    jogo::Partida p(mundo::andarDeTexto({"######", "#@...#", "######"}, 1), 1);
+    p.colocarNoChao({{2.5f, 1.5f}, jogo::criarItem(jogo::TipoItem::Sabre)});
+    passos(p, 1, apertarE());
+    CHECK(p.inventario().espaco(1)->tipo == jogo::TipoItem::Sabre);
+    CHECK(p.chao().empty());
+    CHECK(p.mensagem() == "Você pegou: Sabre de oficial");
+}
+
+TEST_CASE("cheio: E avisa e o item fica") {
+    jogo::Partida p(mundo::andarDeTexto({"######", "#@...#", "######"}, 1), 1);
+    for (int i = 1; i < 16; ++i) p.colocarNoChao({{1.6f, 1.5f}, jogo::criarItem(jogo::TipoItem::Martelo)});
+    for (int i = 1; i < 16; ++i) passos(p, 1, apertarE());
+    p.colocarNoChao({{2.5f, 1.5f}, jogo::criarItem(jogo::TipoItem::Sabre)});
+    passos(p, 1, apertarE());
+    CHECK(p.mensagem() == "Inventário cheio");
+    CHECK(p.chao().size() == 1);
+}
+
+TEST_CASE("munição acima do máximo deixa o resto") {
+    jogo::Partida p(mundo::andarDeTexto({"######", "#@...#", "######"}, 1), 1);
+    p.colocarNoChao({{2.5f, 1.5f}, jogo::MunicaoNoChao{jogo::TipoMunicao::Balas, 40}});
+    passos(p, 30, {1, 0, 0});
+    CHECK(p.armas().municao.balas == 48);
+    REQUIRE(p.chao().size() == 1);
+    CHECK(std::get<jogo::MunicaoNoChao>(p.chao()[0].conteudo).quantidade == 4);
+}
+
+TEST_CASE("engrenagens somam na pontuação") {
+    jogo::Partida p(mundo::andarDeTexto({"######", "#@...#", "######"}, 1), 1);
+    p.colocarNoChao({{2.5f, 1.5f}, 17});
+    passos(p, 30, {1, 0, 0});
+    CHECK(p.engrenagens() == 17);
+    CHECK(p.pontuacao() == 100 + 17 + 50);
+}
+
+TEST_CASE("XP que passa de dois níveis") {
+    jogo::Partida p(mundo::andarDeTexto({"#####", "#@c.#", "#####"}, 1), 1);
+    p.ganharXp(20 + 40 + 5);  // nível 1→2 (20) e 2→3 (40), sobram 5
+    CHECK(p.nivel() == 3);
+    CHECK(p.xp() == 5);
+    CHECK(p.xpParaProximo() == 60);
+    CHECK(p.vidaMaxima() == 30 + 16);
+    CHECK(p.vida() == p.vidaMaxima());
+    CHECK(p.mensagem() == "Nível 3!");
+}
+
+TEST_CASE("destruir dá XP") {
+    jogo::Partida p(mundo::andarDeTexto({"#####", "#@r.#", "#####"}, 1), 1);
+    jogo::Comandos golpe;
+    golpe.atacar = true;
+    for (int i = 0; i < 60; ++i) p.atualizar(golpe, 1.0f / 60);
+    CHECK(p.inimigosDestruidos() == 1);
+    CHECK(p.xp() == 3);
+}
+
+TEST_CASE("tônico rápido cura e não gasta com vida cheia") {
+    jogo::Partida p(mundo::andarDeTexto({"#####", "#@..#", "#####"}, 1), 1);
+    jogo::Comandos um;
+    um.usarRapido = 1;
+    passos(p, 1, um);
+    CHECK(p.mensagem() == "Vida cheia");
+    CHECK(p.inventario().espaco(0)->quantidade == 2);
+    p.ferirParaTeste(20);
+    passos(p, 1, um);
+    CHECK(p.vida() == 25);
+    CHECK(p.inventario().espaco(0)->quantidade == 1);
+}
+
+TEST_CASE("largar põe à frente e pegar de volta") {
+    jogo::Partida p(mundo::andarDeTexto({"######", "#@...#", "######"}, 1), 1);
+    p.largarEspaco(0);
+    REQUIRE(p.chao().size() == 1);
+    CHECK_FALSE(p.inventario().espaco(0).has_value());
+    passos(p, 1, apertarE());
+    CHECK(p.inventario().espaco(0)->quantidade == 2);
+}
+
+TEST_CASE("equipar armadura com vida extra muda a vida máxima") {
+    jogo::Partida p(mundo::andarDeTexto({"######", "#@...#", "######"}, 1), 1);
+    p.colocarNoChao({{2.5f, 1.5f}, jogo::Item{jogo::TipoItem::Casaco, jogo::Qualidade::Modificada,
+                                              {{jogo::TipoBonus::VidaMaxima, 7}}}});
+    passos(p, 1, apertarE());
+    p.usarEspaco(1);
+    CHECK(p.vidaMaxima() == 37);
+    CHECK(p.inventario().espaco(1)->tipo == jogo::TipoItem::Casaco);  // o casaco comum antigo
+    CHECK(p.inventario().espaco(1)->bonus.empty());
+}
+
+TEST_CASE("chão do andar gerado pela semente") {
+    jogo::Partida p(5, 2);
+    CHECK(p.chao().size() >= 4 + 3 + 3);
+}
+
+TEST_CASE("inventário cheio não impede o E de abrir a comporta") {
+    jogo::Partida p(mundo::andarDeTexto({"######", "#@C..#", "######"}, 1), 1);
+    for (int i = 1; i < 16; ++i) p.colocarNoChao({{1.6f, 1.5f}, jogo::criarItem(jogo::TipoItem::Martelo)});
+    for (int i = 1; i < 16; ++i) passos(p, 1, apertarE());
+    p.colocarNoChao({{1.85f, 1.5f}, jogo::criarItem(jogo::TipoItem::Sabre)});  // caído na frente da comporta
+    passos(p, 1, apertarE());
+    passos(p, 10);
+    CHECK(p.aberturaComporta(2, 1) > 0.0f);
+}
+
+TEST_CASE("equipar outra arma de fogo durante a recarga não cria nem perde balas") {
+    jogo::Partida p(mundo::andarDeTexto({"######", "#@...#", "######"}, 1), 1);
+    jogo::Comandos troca;
+    troca.trocarArma = true;
+    passos(p, 1, troca);  // revólver na mão
+    jogo::Comandos tiro;
+    tiro.atacar = true;
+    passos(p, 1, tiro);  // carga 5
+    jogo::Comandos recarregar;
+    recarregar.recarregar = true;
+    passos(p, 1, recarregar);
+    REQUIRE(p.armas().recarga > 0.0f);
+    p.colocarNoChao({{2.0f, 1.5f}, jogo::criarItem(jogo::TipoItem::Revolver)});
+    passos(p, 1, apertarE());
+    p.usarEspaco(1);  // equipa o revólver do chão no meio da recarga
+    CHECK(p.armas().recarga == 0.0f);
+    CHECK(p.inventario().armaDeFogo().carga == 6);       // o novo veio carregado
+    CHECK(p.inventario().espaco(1)->carga == 5);         // o antigo guardou a carga dele
+    CHECK(p.armas().municao.balas == 12);                // a reserva não mudou
+    passos(p, 120);
+    CHECK(p.armas().municao.balas == 12);
 }

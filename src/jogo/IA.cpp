@@ -117,7 +117,10 @@ EventosIA atualizarInimigos(std::vector<Inimigo>& v, const MundoIA& m, float dt)
                     if (ve && dist <= INICIO_GOLPE) mudar(i, EstadoInimigo::Preparando);
                     else aproximar(i, m, e, ve, dt);
                 } else if (ve && dist < DISTANCIA_MIN_ATIRADOR) {
+                    const glm::vec2 antes = i.posicao;
                     mover(i, m.grade, i.posicao - m.jogador, dt);  // recua
+                    // Encurralado (o recuo não saiu do lugar): atira assim mesmo
+                    if (glm::distance(antes, i.posicao) < 1e-4f) mudar(i, EstadoInimigo::Preparando);
                 } else if (ve && dist <= DISTANCIA_MAX_ATIRADOR) {
                     mudar(i, EstadoInimigo::Preparando);  // para e mira
                 } else {
@@ -128,8 +131,7 @@ EventosIA atualizarInimigos(std::vector<Inimigo>& v, const MundoIA& m, float dt)
                 if (i.tempoNoEstado < d.preparo) break;
                 if (!d.aDistancia) {
                     if (dist <= ALCANCE_GOLPE && ve) {
-                        e.dano += mundo::sortear(m.rng, i.danoMin, i.danoMax);
-                        e.autor = i.tipo;
+                        e.golpes.push_back({mundo::sortear(m.rng, i.danoMin, i.danoMax), i.tipo});
                     }
                 } else if (ve && dist > 1e-4f) {  // sem direção se estiver exatamente no jogador
                     const glm::vec2 direcao = glm::normalize(m.jogador - i.posicao);

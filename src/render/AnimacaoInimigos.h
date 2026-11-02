@@ -8,7 +8,6 @@ namespace render {
 
 // Quadros de cada inimigo no array de sprites: parado, andar 1, andar 2, atacar 1, atacar 2, morrer, destroços
 constexpr int QUADROS_POR_INIMIGO = 7;
-constexpr int TOTAL_SPRITES = PRIMEIRO_INIMIGO + 4 * QUADROS_POR_INIMIGO;
 
 // Andar alterna a cada 0,25 s; Preparando = atacar 1; Recuperando = atacar 2;
 // Destruído: "morrer" nos primeiros 0,3 s e depois os destroços

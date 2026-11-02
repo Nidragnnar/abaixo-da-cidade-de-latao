@@ -20,8 +20,7 @@ ResultadoProjeteis atualizarProjeteis(std::vector<Projetil>& p, const mundo::Gra
         for (int i = 0; i < n; ++i) {
             t.posicao += deslocamento / static_cast<float>(n);
             if (glm::distance(t.posicao, jogador) < raioJogador + RAIO_PROJETIL) {
-                r.dano += t.dano;
-                r.autor = t.autor;
+                r.golpes.push_back({t.dano, t.autor});
                 return true;
             }
             if (g.solida(static_cast<int>(std::floor(t.posicao.x)), static_cast<int>(std::floor(t.posicao.y))))

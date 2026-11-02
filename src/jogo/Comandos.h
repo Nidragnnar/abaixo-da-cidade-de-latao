@@ -12,6 +12,7 @@ struct Comandos {
     bool trocarArma = false;  // Q ou roda do mouse (evento)
     bool recarregar = false;  // R (evento)
     float inclinar = 0;       // radianos (mouse vertical), positivo = olhar para cima
+    int usarRapido = 0;       // 1–4: usar o item do espaço correspondente (evento)
 };
 
 }
