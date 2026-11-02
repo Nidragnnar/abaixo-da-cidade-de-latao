@@ -7,6 +7,9 @@ struct Retangulo {
     int x, y, largura, altura;
 };
 
+// Ponto dentro do retângulo (borda de baixo e da direita não contam)
+bool contem(const Retangulo& r, glm::vec2 ponto);
+
 // Maior retângulo com a proporção da base, centralizado na janela; janela zerada → retângulo zerado
 Retangulo calcularLetterbox(int janelaL, int janelaA, int baseL, int baseA);
 

@@ -10,6 +10,8 @@ Set-Location (Split-Path $PSScriptRoot)
 New-Item -ItemType Directory -Force capturas | Out-Null
 $config = if ($Release) { "Release" } else { "Debug" }
 $bmp = "$PWD\capturas\$Nome.bmp"
+# Áudio de mentira: o caminho inteiro do som roda, mas nada sai nos alto-falantes
+$env:SDL_AUDIODRIVER = "dummy"
 Start-Process "$PWD\build\$config\Roguelike.exe" -ArgumentList (@("--captura", $bmp) + $Argumentos) -Wait
 Add-Type -AssemblyName System.Drawing
 $img = [Drawing.Image]::FromFile($bmp)

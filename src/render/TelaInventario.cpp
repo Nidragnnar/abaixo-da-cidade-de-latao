@@ -27,8 +27,6 @@ glm::vec4 corDaQualidade(jogo::Qualidade q) {
     }
 }
 
-bool dentro(const Retangulo& r, glm::vec2 p) { return p.x >= r.x && p.y >= r.y && p.x < r.x + r.largura && p.y < r.y + r.altura; }
-
 void texto(std::vector<VerticeTex>& v, std::string_view s, glm::vec2 p, glm::vec4 cor) {
     auto t = construirTexto(s, p, 1, cor);
     v.insert(v.end(), t.begin(), t.end());
@@ -60,9 +58,9 @@ LayoutInventario layoutInventario(int telaL, int telaA) {
 
 std::optional<int> espacoSob(const LayoutInventario& l, glm::vec2 ponto) {
     for (int i = 0; i < jogo::ESPACOS_INVENTARIO; ++i)
-        if (dentro(l.espacos[static_cast<size_t>(i)], ponto)) return i;
+        if (contem(l.espacos[static_cast<size_t>(i)], ponto)) return i;
     for (int k = 0; k < 3; ++k)
-        if (dentro(l.equipados[static_cast<size_t>(k)], ponto)) return jogo::ESPACOS_INVENTARIO + k;
+        if (contem(l.equipados[static_cast<size_t>(k)], ponto)) return jogo::ESPACOS_INVENTARIO + k;
     return std::nullopt;
 }
 

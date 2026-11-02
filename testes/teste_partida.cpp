@@ -317,3 +317,79 @@ TEST_CASE("equipar outra arma de fogo durante a recarga não cria nem perde bala
     passos(p, 120);
     CHECK(p.armas().municao.balas == 12);
 }
+
+namespace {
+int contar(const jogo::Partida& p, jogo::Som s) {
+    int n = 0;
+    for (const auto& e : p.sons()) n += e.som == s ? 1 : 0;
+    return n;
+}
+}
+
+TEST_CASE("andar faz passos de pedra no esgoto") {
+    jogo::Partida p(mundo::andarDeTexto({"################", "#@.............#", "################"}, 1), 1);
+    REQUIRE(p.andar().zona == mundo::Zona::Esgoto);
+    int pedra = 0, metal = 0;
+    for (int i = 0; i < 60; ++i) {
+        p.atualizar({1, 0, 0}, 1.0f / 60);
+        pedra += contar(p, jogo::Som::PassoPedra);
+        metal += contar(p, jogo::Som::PassoMetal);
+    }
+    CHECK(pedra >= 1);
+    CHECK(metal == 0);
+}
+
+TEST_CASE("disparo do bacamarte toca o som certo e acerto toca uma vez") {
+    jogo::Partida p(mundo::andarDeTexto({"##########", "#@..c....#", "##########"}, 1), 1);
+    p.colocarNoChao({p.jogador().posicao + glm::vec2(0.5f, 0), jogo::criarItem(jogo::TipoItem::Bacamarte)});
+    passos(p, 1, apertarE());
+    REQUIRE(p.inventario().espaco(1).has_value());
+    p.usarEspaco(1);
+    REQUIRE(p.inventario().armaDeFogo().tipo == jogo::TipoItem::Bacamarte);
+    REQUIRE(p.inventario().armaDeFogo().carga > 0);
+    jogo::Comandos troca;
+    troca.trocarArma = true;
+    passos(p, 1, troca);
+    jogo::Comandos tiro;
+    tiro.atacar = true;
+    p.atualizar(tiro, 1.0f / 60);
+    CHECK(contar(p, jogo::Som::DisparoBacamarte) == 1);
+    CHECK(contar(p, jogo::Som::DisparoRevolver) == 0);
+    CHECK(contar(p, jogo::Som::Acerto) == 1);
+}
+
+TEST_CASE("comporta abrindo toca o som com origem na comporta") {
+    jogo::Partida p(mundo::andarDeTexto({"#####", "#@C.#", "#####"}, 1), 1);
+    passos(p, 1, apertarE());
+    REQUIRE(contar(p, jogo::Som::Comporta) == 1);
+    const auto& e = p.sons().front().som == jogo::Som::Comporta ? p.sons().front() : p.sons().back();
+    REQUIRE(e.origem.has_value());
+    CHECK(e.origem->x == doctest::Approx(2.5f));
+    CHECK(e.origem->y == doctest::Approx(1.5f));
+    passos(p, 1, apertarE());  // já está abrindo: não toca de novo
+    CHECK(contar(p, jogo::Som::Comporta) == 0);
+}
+
+TEST_CASE("descer e subir de nível tocam elevador e nível") {
+    jogo::Partida p(mundo::andarDeTexto({"####", "#@E#", "####"}, 1), 99);
+    passos(p, 1, apertarE());
+    CHECK(contar(p, jogo::Som::Elevador) == 1);
+    p.ganharXp(20 + 40);  // dois níveis: um som só
+    CHECK(contar(p, jogo::Som::Nivel) == 1);
+}
+
+TEST_CASE("sons valem só para o passo em que aconteceram") {
+    jogo::Partida p(mundo::andarDeTexto({"#####", "#@C.#", "#####"}, 1), 1);
+    passos(p, 1, apertarE());
+    CHECK_FALSE(p.sons().empty());
+    passos(p, 1);
+    CHECK(p.sons().empty());
+}
+
+TEST_CASE("dano e pegar tocam uma vez por passo") {
+    jogo::Partida p(mundo::andarDeTexto({"#######", "#@....#", "#######"}, 1), 1);
+    p.colocarNoChao({p.jogador().posicao, 30});
+    p.colocarNoChao({p.jogador().posicao, 40});
+    passos(p, 1);
+    CHECK(contar(p, jogo::Som::Pegar) == 1);
+}

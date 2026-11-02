@@ -272,6 +272,8 @@ Cada etapa termina jogável, compilada e testada pelo Claude; o Nidragnnar testa
 
 ## 14. Distribuição
 
-Pasta `Roguelike\` com `Roguelike.exe`, `SDL2.dll`, `SDL2_mixer.dll`, `assets\`, `COMO_JOGAR.txt` e `LICENCAS.txt`,
-compactada em `Roguelike-v1.zip`. Compilado em Release, sem dependência de instalar Visual C++ Redistributable
+Nome do jogo: **Abaixo da Cidade de Latão** (escolhido em 2026-11-02). Pasta `AbaixoDaCidadeDeLatao\` com
+`AbaixoDaCidadeDeLatao.exe` (cópia de `Roguelike.exe`, o nome interno), `SDL2.dll`, `SDL2_mixer.dll`, `assets\`,
+`COMO_JOGAR.txt` e `LICENCAS.txt`, compactada em `AbaixoDaCidadeDeLatao-v1.zip` por `ferramentas\empacotar.ps1`.
+Placar e opções continuam em `%APPDATA%\Roguelike`. Compilado em Release, sem dependência de instalar Visual C++ Redistributable
 (runtime estático `/MT`). Publicação (GitHub Release etc.) só com o ok do Nidragnnar.

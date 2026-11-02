@@ -299,3 +299,28 @@ TEST_CASE("máximos de munição") {
     CHECK(jogo::maximoMunicao(jogo::TipoMunicao::Cartuchos) == 20);
     CHECK(jogo::maximoMunicao(jogo::TipoMunicao::Celulas) == 12);
 }
+
+TEST_CASE("resultado do ataque informa golpe, arma vazia e recarga") {
+    auto a = mundo::andarDeTexto({"#####", "#@..#", "#####"}, 1);
+    std::vector<jogo::Inimigo> v;
+    jogo::Inventario inv;
+    std::mt19937 rng(1);
+    jogo::Armas branca;
+    auto golpe = passo(branca, inv, a, v, rng);
+    CHECK(golpe.golpeou);
+    CHECK(golpe.acertos == 0);
+
+    // Revólver vazio com o botão segurado por 1 s: o clique respeita o intervalo
+    inv.armaDeFogo().carga = 0;
+    auto armas = deFogo();
+    armas.municao.balas = 12;
+    int vazias = 0;
+    for (int i = 0; i < 60; ++i) vazias += passo(armas, inv, a, v, rng).vazia ? 1 : 0;
+    CHECK(vazias >= 1);
+    CHECK(vazias <= 3);  // ceil(1 / 0,4)
+
+    // R começa a recarga uma vez só
+    CHECK(passo(armas, inv, a, v, rng, comando(false, false, true)).comecouRecarga);
+    CHECK_FALSE(passo(armas, inv, a, v, rng, comando(false, false, true)).comecouRecarga);
+    CHECK_FALSE(passo(armas, inv, a, v, rng, comando(false)).golpeou);
+}

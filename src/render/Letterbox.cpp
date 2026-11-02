@@ -2,6 +2,10 @@
 
 namespace render {
 
+bool contem(const Retangulo& r, glm::vec2 p) {
+    return p.x >= r.x && p.y >= r.y && p.x < r.x + r.largura && p.y < r.y + r.altura;
+}
+
 Retangulo calcularLetterbox(int janelaL, int janelaA, int baseL, int baseA) {
     if (janelaL <= 0 || janelaA <= 0 || baseL <= 0 || baseA <= 0) return {0, 0, 0, 0};
     // Compara as proporções em inteiros para não perder pixel por arredondamento

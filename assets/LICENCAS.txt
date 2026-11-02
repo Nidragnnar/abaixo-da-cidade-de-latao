@@ -4,6 +4,8 @@ Licenças de terceiros
 Código
 ------
 SDL2 2.32.10 ........ zlib ................ https://github.com/libsdl-org/SDL (tag release-2.32.10)
+SDL_mixer 2.8.1 ..... zlib ................ https://github.com/libsdl-org/SDL_mixer (tag release-2.8.1)
+                      inclui stb_vorbis (domínio público / MIT) para tocar OGG
 glm 1.0.1 ........... MIT ................. https://github.com/g-truc/glm
 glad 0.1.36 ......... MIT (gerador); código gerado em domínio público/Apache 2.0 (especificação Khronos)
                       https://glad.dav1d.de — gl 3.3, perfil core, sem extensões
@@ -46,3 +48,7 @@ PROVISÓRIOS, feitos para este jogo por ferramentas/gerar_inimigos.ps1 (sem lice
 PROVISÓRIOS, feitos para este jogo por ferramentas/gerar_itens.ps1 (sem licença de terceiros):
   sprites/item_*.png                                     itens, munição e engrenagens (no chão e como ícone)
   armas/sabre_0..1, martelo_0..1, bacamarte_0..2, tesla_0..1.png   armas novas na mão
+
+PROVISÓRIOS, sintetizados para este jogo por ferramentas/gerar_sons.cpp (sem licença de terceiros):
+  sons/*.wav     efeitos (passos, golpes, disparos, recarga, dano, comporta, elevador, menu...)
+  sons/musica.wav   música ambiente industrial em loop (32 s)

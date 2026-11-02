@@ -13,6 +13,7 @@
 #include "jogo/Itens.h"
 #include "jogo/Jogador.h"
 #include "jogo/Projeteis.h"
+#include "jogo/Sons.h"
 #include "mundo/Consultas.h"
 #include "mundo/Gerador.h"
 
@@ -28,6 +29,7 @@ constexpr int CURA_TONICO = 15;
 constexpr float ALCANCE_PEGAR = 1.5f;   // pegar item com E
 constexpr float LARGURA_PEGAR = 0.4f;   // quanto o item pode estar fora da linha do olhar
 constexpr float DURACAO_CLARAO = 0.05f;  // o disparo ilumina a cena
+constexpr float DISTANCIA_PASSO = 1.7f;  // um som de passo a cada tanto andado
 
 // Estado de uma partida: andar, jogador, armas, inimigos, projéteis, comportas, chave, exploração e mensagens
 class Partida {
@@ -77,6 +79,8 @@ public:
     int pontuacao() const;
     float clarao() const { return clarao_; }
     float tempoDesdeDano() const { return tempoDesdeDano_; }
+    // Sons do último atualizar() (a lista é zerada no começo de cada passo)
+    const std::vector<EventoSom>& sons() const { return sons_; }
 
     // Tela do inventário: equipa (arma/armadura) ou bebe (tônico); larga no chão à frente; troca dois espaços
     void usarEspaco(int i);
@@ -98,6 +102,9 @@ private:
     void descer();
     void avisar(std::string texto);
     void receberDano(int bruto, TipoInimigo autor);
+    void abrirComporta(int x, int y);
+    // Sem origem: no máximo um de cada por passo; com origem: todos
+    void tocar(Som s, std::optional<glm::vec2> origem = std::nullopt);
     int indice(int x, int y) const { return y * andar_.grade.largura() + x; }
 
     uint32_t semente_;
@@ -129,6 +136,8 @@ private:
     int destruidos_ = 0;
     float clarao_ = 0.0f;
     float tempoDesdeDano_ = 1e9f;
+    std::vector<EventoSom> sons_;
+    float andadoDesdePasso_ = 0.0f;
 };
 
 }

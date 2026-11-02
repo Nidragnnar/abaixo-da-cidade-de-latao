@@ -26,6 +26,22 @@ FetchContent_Declare(doctest
 
 FetchContent_MakeAvailable(SDL2 glm doctest)
 
+# SDL_mixer como DLL: só WAV e OGG (stb_vorbis embutido), sem bibliotecas externas
+set(SDL2MIXER_VENDORED OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_SAMPLES OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_INSTALL OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_DEPS_SHARED OFF CACHE BOOL "" FORCE)
+foreach(formato OPUS MOD MIDI FLAC MP3 WAVPACK GME CMD AIFF VOC)
+    set(SDL2MIXER_${formato} OFF CACHE BOOL "" FORCE)
+endforeach()
+set(SDL2MIXER_WAVE ON CACHE BOOL "" FORCE)
+set(SDL2MIXER_VORBIS "STB" CACHE STRING "" FORCE)
+FetchContent_Declare(SDL2_mixer
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL_mixer.git
+    GIT_TAG        release-2.8.1
+    GIT_SHALLOW    TRUE)
+FetchContent_MakeAvailable(SDL2_mixer)
+
 # glad (OpenGL 3.3 core) e stb_image ficam no repositório, em externo/
 add_library(glad STATIC ${CMAKE_SOURCE_DIR}/externo/glad/src/glad.c)
 target_include_directories(glad PUBLIC ${CMAKE_SOURCE_DIR}/externo/glad/include)

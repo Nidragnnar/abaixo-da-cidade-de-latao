@@ -4,7 +4,10 @@
 #include <charconv>
 #include <fstream>
 #include <optional>
+#include <sstream>
 #include <string_view>
+
+#include "jogo/ArquivoTexto.h"
 
 namespace jogo {
 
@@ -86,33 +89,17 @@ LeituraPlacar lerPlacar(const std::filesystem::path& arquivo) {
     }
     if (leitura.estavaCorrompido) {
         leitura.registros.clear();
-        std::filesystem::path corrompido = arquivo;
-        corrompido += ".corrompido";
-        std::filesystem::remove(corrompido, erro);
-        std::filesystem::rename(arquivo, corrompido, erro);
-        leitura.renomeado = !erro;
+        leitura.renomeado = renomearCorrompido(arquivo);
     }
     return leitura;
 }
 
 bool gravarPlacar(const std::filesystem::path& arquivo, const std::vector<RegistroPlacar>& registros) {
-    try {
-        if (arquivo.has_parent_path()) std::filesystem::create_directories(arquivo.parent_path());
-        std::filesystem::path temporario = arquivo;
-        temporario += ".tmp";
-        {
-            std::ofstream f(temporario, std::ios::binary | std::ios::trunc);
-            if (!f) return false;
-            for (const RegistroPlacar& r : registros)
-                f << r.pontuacao << ';' << r.andar << ';' << r.nivel << ';' << r.inimigos << ';' << r.engrenagens << ';'
-                  << r.semente << ';' << limpar(r.causa) << '\n';
-            if (!f) return false;
-        }
-        std::filesystem::rename(temporario, arquivo);  // substitui o anterior
-        return true;
-    } catch (const std::exception&) {
-        return false;
-    }
+    std::ostringstream texto;
+    for (const RegistroPlacar& r : registros)
+        texto << r.pontuacao << ';' << r.andar << ';' << r.nivel << ';' << r.inimigos << ';' << r.engrenagens << ';'
+              << r.semente << ';' << limpar(r.causa) << '\n';
+    return gravarAtomico(arquivo, texto.str());
 }
 
 }

@@ -17,6 +17,8 @@ public:
 
     SDL_Window* sdl() const { return janela_; }
     void trocarBuffers();
+    // Tela cheia sem trocar a resolução do monitor (o letterbox cuida da proporção)
+    void definirTelaCheia(bool sim);
     // Tamanho real em pixels (difere do tamanho lógico com escala de tela)
     glm::ivec2 tamanhoDesenhavel() const;
 

@@ -3,6 +3,7 @@
 #include <glm/vec2.hpp>
 
 #include "jogo/Comandos.h"
+#include "ui/Menus.h"
 
 namespace plataforma {
 
@@ -13,7 +14,7 @@ struct CliqueInventario {
     bool direito = false;     // botão direito desceu
 };
 
-// Traduz teclado e mouse em jogo::Comandos e cuida da captura do mouse
+// Traduz teclado e mouse em jogo::Comandos (no jogo) ou ui::EntradaMenu (nos menus) e cuida da captura do mouse
 class Entrada {
 public:
     explicit Entrada(SDL_Window* janela) : janela_(janela) {}
@@ -23,16 +24,25 @@ public:
     jogo::Comandos coletar();
     // Joga fora o giro e os eventos acumulados (usado enquanto o jogo está pausado)
     void descartarGiro();
+    // Radianos por pixel do mouse (opção de sensibilidade)
+    void definirSensibilidade(float radPorPixel) { sensibilidade_ = radPorPixel; }
     // Tab alterna o automapa
     bool mapaVisivel() const { return mapaVisivel_; }
-    // I abre e fecha o inventário (abrir solta o mouse; fechar recaptura)
+    // I abre e fecha o inventário (abrir solta o mouse; fechar recaptura); Esc também fecha
     bool inventarioAberto() const { return inventarioAberto_; }
     void abrirInventario(bool sim);
-    // Com o inventário aberto: posição do mouse (coordenadas da janela) e cliques
+    // Com o inventário aberto ou nos menus: posição do mouse (coordenadas da janela) e cliques
     glm::vec2 posicaoMouse() const { return posicaoMouse_; }
     CliqueInventario coletarCliques();
-    // Enter apertado desde a última consulta (tela de fim)
-    bool pediuNovaPartida();
+    // Esc no jogo (fora do inventário) ou a janela perdeu o foco no jogo; consome o pedido
+    bool pediuPausa();
+    // Menus: mouse livre, teclas viram navegação
+    void modoMenu(bool sim);
+    bool emModoMenu() const { return modoMenu_; }
+    // Setas/WASD, Enter, Esc, Backspace, dígitos e cliques desde a última chamada (sem o item sob o mouse)
+    ui::EntradaMenu coletarMenu();
+    // Sai dos menus e captura o mouse (o clique que confirmou não vira ataque)
+    void entrarNoJogo();
     void soltarMouse() { capturar(false); }
 
     bool capturado() const { return capturado_; }
@@ -40,10 +50,10 @@ public:
 
 private:
     void capturar(bool sim);
-
-    static constexpr float SENSIBILIDADE = 0.0025f;  // radianos por pixel
+    void teclaNoMenu(const SDL_KeyboardEvent& k);
 
     SDL_Window* janela_;
+    float sensibilidade_ = 0.0025f;   // radianos por pixel
     float giroAcumulado_ = 0.0f;
     float inclinarAcumulado_ = 0.0f;  // mouse vertical
     bool capturado_ = false;
@@ -52,12 +62,14 @@ private:
     bool trocarPendente_ = false;      // Q ou roda
     bool recarregarPendente_ = false;  // R
     int rapidoPendente_ = 0;           // 1–4
-    bool novaPartidaPendente_ = false;  // Enter
+    bool pausaPendente_ = false;       // Esc ou foco perdido no jogo
     bool ignorarBotao_ = false;        // o clique que capturou o mouse não ataca
     bool mapaVisivel_ = false;
     bool inventarioAberto_ = false;
+    bool modoMenu_ = false;
     glm::vec2 posicaoMouse_{0.0f};
     CliqueInventario cliques_;
+    ui::EntradaMenu menu_;
 };
 
 }

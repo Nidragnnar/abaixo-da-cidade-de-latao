@@ -167,14 +167,17 @@ ResultadoAtaque atualizarArmas(Armas& a, Inventario& inv, const Atributos& atr, 
     }
     // Recarregar: só arma de fogo com carga (a Tesla gasta direto da reserva)
     if (c.recarregar && a.ativa == ArmaAtiva::Fogo && dFogo.carga > 0 && a.recarga == 0 &&
-        fogo.carga < capacidade(fogo) && reserva > 0)
+        fogo.carga < capacidade(fogo) && reserva > 0) {
         a.recarga = comBonusPorcento(dFogo.recarga, fogo, TipoBonus::Recarga);
+        r.comecouRecarga = true;
+    }
 
     if (!c.atacar || a.intervalo > FOLGA || a.recarga > 0) return r;
 
     if (a.ativa == ArmaAtiva::Branca) {
         const Item& branca = inv.armaBranca();
         golpear(r, branca, atr, posicao, angulo, g, inimigos, rng);
+        r.golpeou = true;
         a.intervalo = comBonusPorcento(dadosArma(branca.tipo).intervalo, branca, TipoBonus::Velocidade);
         a.animacao = DURACAO_ANIMACAO_ARMA;
         return r;
@@ -185,6 +188,7 @@ ResultadoAtaque atualizarArmas(Armas& a, Inventario& inv, const Atributos& atr, 
     if ((semRecarga && reserva == 0) || (!semRecarga && fogo.carga == 0)) {
         if (semRecarga) r.mensagem = "Sem células elétricas";
         else r.mensagem = reserva > 0 ? "Sem munição — R para recarregar" : "Sem munição";
+        r.vazia = true;
         a.intervalo = intervalo;  // não repete o aviso a cada passo
         return r;
     }

@@ -31,6 +31,11 @@ add_library(nucleo STATIC
     src/jogo/IA.cpp
     src/jogo/Armas.cpp
     src/jogo/Placar.cpp
+    src/jogo/ArquivoTexto.cpp
+    src/jogo/Config.cpp
+    src/jogo/Sons.cpp
+    src/jogo/Demo.cpp
+    src/ui/Menus.cpp
     src/jogo/Itens.cpp
     src/jogo/Inventario.cpp
     src/render/Camera.cpp
@@ -46,6 +51,7 @@ add_library(nucleo STATIC
     src/render/Hud.cpp
     src/render/AnimacaoInimigos.cpp
     src/render/TelaInventario.cpp
+    src/render/TelasMenu.cpp
 )
 configurar_alvo(nucleo)
 target_include_directories(nucleo PUBLIC ${CMAKE_SOURCE_DIR}/src)
@@ -58,6 +64,7 @@ add_executable(Roguelike WIN32
     src/plataforma/Caminhos.cpp
     src/plataforma/Janela.cpp
     src/plataforma/Entrada.cpp
+    src/plataforma/Audio.cpp
     src/render/Shader.cpp
     src/render/Texturas.cpp
     src/render/MalhaGPU.cpp
@@ -65,12 +72,13 @@ add_executable(Roguelike WIN32
     src/render/Desenho2D.cpp
 )
 configurar_alvo(Roguelike)
-target_link_libraries(Roguelike PRIVATE nucleo SDL2::SDL2main SDL2::SDL2 glad stb opengl32)
+target_link_libraries(Roguelike PRIVATE nucleo SDL2::SDL2main SDL2::SDL2 SDL2_mixer::SDL2_mixer glad stb opengl32)
 set_target_properties(Roguelike PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY $<TARGET_FILE_DIR:Roguelike>)
 
-# SDL2.dll ao lado do exe
+# SDL2.dll e SDL2_mixer.dll ao lado do exe
 add_custom_command(TARGET Roguelike POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:SDL2::SDL2> $<TARGET_FILE_DIR:Roguelike>)
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:SDL2::SDL2> $<TARGET_FILE:SDL2_mixer::SDL2_mixer>
+            $<TARGET_FILE_DIR:Roguelike>)
 
 # Assets copiados um a um, sempre que mudam (não só quando o exe é religado)
 file(GLOB_RECURSE ARQUIVOS_ASSETS CONFIGURE_DEPENDS RELATIVE ${CMAKE_SOURCE_DIR}/assets ${CMAKE_SOURCE_DIR}/assets/*)
@@ -90,6 +98,12 @@ file(GLOB ARQUIVOS_TESTE CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/testes/*.cpp)
 add_executable(testes_roguelike ${ARQUIVOS_TESTE})
 configurar_alvo(testes_roguelike)
 target_link_libraries(testes_roguelike PRIVATE nucleo doctest::doctest)
+# Para conferir que todo som tem arquivo
+target_compile_definitions(testes_roguelike PRIVATE PASTA_ASSETS="${CMAKE_SOURCE_DIR}/assets")
 
 enable_testing()
 add_test(NAME testes COMMAND testes_roguelike)
+
+# Sons e música provisórios (não faz parte do jogo): cmake --build --preset release --target gerar_sons
+add_executable(gerar_sons EXCLUDE_FROM_ALL ferramentas/gerar_sons.cpp)
+configurar_alvo(gerar_sons)

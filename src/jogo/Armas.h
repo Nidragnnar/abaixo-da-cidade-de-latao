@@ -40,6 +40,9 @@ struct ResultadoAtaque {
     int destruidos = 0;
     float barulho = 0;  // alcance do barulho (acorda inimigos parados)
     bool disparou = false;
+    bool golpeou = false;         // a arma branca atacou (acertando ou não)
+    bool vazia = false;           // tentou atirar sem munição (o clique respeita o intervalo)
+    bool comecouRecarga = false;
     std::string mensagem;
 };
 

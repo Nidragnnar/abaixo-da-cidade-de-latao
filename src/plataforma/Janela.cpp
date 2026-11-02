@@ -48,6 +48,8 @@ Janela::~Janela() {
 
 void Janela::trocarBuffers() { SDL_GL_SwapWindow(janela_); }
 
+void Janela::definirTelaCheia(bool sim) { SDL_SetWindowFullscreen(janela_, sim ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0); }
+
 glm::ivec2 Janela::tamanhoDesenhavel() const {
     glm::ivec2 t;
     SDL_GL_GetDrawableSize(janela_, &t.x, &t.y);

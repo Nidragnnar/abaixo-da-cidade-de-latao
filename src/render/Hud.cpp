@@ -139,7 +139,7 @@ ElementosHud construirTelaFim(const DadosFim& d, int telaL, int telaA) {
     if (d.posicaoPlacar > 0)
         textoCentralizado(h.texto, std::format("{}º lugar no placar!", d.posicaoPlacar), y, telaL, 1, COR_LATAO);
     y += 24;
-    textoCentralizado(h.texto, "Enter: nova partida", y, telaL, 1, COR_TEXTO);
+    textoCentralizado(h.texto, "Enter: nova partida   Esc: menu", y, telaL, 1, COR_TEXTO);
     return h;
 }
 

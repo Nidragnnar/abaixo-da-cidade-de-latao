@@ -1,5 +1,6 @@
 #include "jogo/Partida.h"
 
+#include <algorithm>
 #include <cmath>
 #include <format>
 #include <utility>
@@ -50,6 +51,16 @@ void Partida::avisar(std::string texto) {
     tempoMensagem_ = DURACAO_MENSAGEM;
 }
 
+void Partida::tocar(Som s, std::optional<glm::vec2> origem) {
+    if (!origem && std::ranges::any_of(sons_, [&](const EventoSom& e) { return e.som == s && !e.origem; })) return;
+    sons_.push_back({s, origem});
+}
+
+void Partida::abrirComporta(int x, int y) {
+    // Se já está abrindo, continua de onde está (e não toca de novo)
+    if (abrindo_.try_emplace(indice(x, y), 0.0f).second) tocar(Som::Comporta, glm::vec2(x + 0.5f, y + 0.5f));
+}
+
 void Partida::recalcularAtributos() {
     atributos_ = calcularAtributos(inventario_, nivel_);
     vida_ = std::min(vida_, atributos_.vidaMaxima);
@@ -67,6 +78,7 @@ void Partida::ganharXp(int quanto) {
     recalcularAtributos();
     vida_ = atributos_.vidaMaxima;  // subir de nível enche a vida
     avisar(std::format("Nível {}!", nivel_));
+    tocar(Som::Nivel);
 }
 
 void Partida::beberTonico(int i) {
@@ -127,6 +139,7 @@ bool Partida::pegarItemAFrente() {
     }
     chao_.erase(chao_.begin() + melhor);
     avisar("Você pegou: " + nome);
+    tocar(Som::Pegar);
     return true;
 }
 
@@ -140,11 +153,13 @@ void Partida::pegarAoPassar() {
             reserva += cabe;
             m->quantidade -= cabe;
             avisar(std::format("+{} {}", cabe, nomeMunicao(m->tipo, cabe)));
+            tocar(Som::Pegar);
             return m->quantidade == 0;
         }
         if (auto* e = std::get_if<int>(&c.conteudo)) {
             engrenagens_ += *e;
             avisar(std::format("+{} engrenagens", *e));
+            tocar(Som::Pegar);
             return true;
         }
         return false;  // itens pedem E
@@ -156,6 +171,7 @@ void Partida::recompensarDestruidos() {
         if (i.estado != EstadoInimigo::Destruido || i.recompensado) continue;
         i.recompensado = true;
         ++destruidos_;
+        tocar(Som::InimigoDestruido);
         for (auto& c : soltarDoInimigo(i.tipo, i.posicao, andar_.numero, rng_)) chao_.push_back(std::move(c));
         ganharXp(dados(i.tipo).xp);
     }
@@ -165,10 +181,9 @@ void Partida::usar() {
     if (pegarItemAFrente()) return;
     const auto alvo = mundo::celulaAFrente(andar_.grade, jogador_.posicao, jogador_.angulo, ALCANCE_USAR);
     if (!alvo) return;
-    const int i = indice(alvo->x, alvo->y);
     switch (andar_.grade.em(alvo->x, alvo->y)) {
         case mundo::Celula::Comporta:
-            abrindo_.try_emplace(i, 0.0f);  // se já está abrindo, continua de onde está
+            abrirComporta(alvo->x, alvo->y);
             break;
         case mundo::Celula::ComportaTrancada:
             if (!temChave_) {
@@ -177,7 +192,7 @@ void Partida::usar() {
             }
             temChave_ = false;
             andar_.grade.definir(alvo->x, alvo->y, mundo::Celula::Comporta);
-            abrindo_.try_emplace(i, 0.0f);
+            abrirComporta(alvo->x, alvo->y);
             avisar("Comporta destrancada");
             break;
         case mundo::Celula::Elevador: descer(); break;
@@ -198,10 +213,12 @@ void Partida::descer() {
     desdeCampo_ = 1e9f;
     ++trocasDeAndar_;
     avisar(std::format("Andar {}", andar_.numero));
+    tocar(Som::Elevador);
 }
 
 void Partida::receberDano(int bruto, TipoInimigo autor) {
     tempoDesdeDano_ = 0.0f;
+    tocar(Som::Dano);
     if (invencivel_) return;
     vida_ -= std::max(1, bruto - defesa());
     if (vida_ <= 0 && !morto_) {
@@ -211,10 +228,12 @@ void Partida::receberDano(int bruto, TipoInimigo autor) {
 }
 
 void Partida::atualizar(const Comandos& c, float dt) {
+    sons_.clear();
     if (morto_) return;
     tempoDesdeDano_ += dt;
     clarao_ = std::max(0.0f, clarao_ - dt);
 
+    const glm::vec2 antes = jogador_.posicao;
     atualizarJogador(jogador_, c, andar_.grade, dt);
     // O jogador não atravessa inimigos vivos: é empurrado para fora de quem estiver colado nele
     for (const Inimigo& i : inimigos_) {
@@ -226,6 +245,12 @@ void Partida::atualizar(const Comandos& c, float dt) {
         d = dist > 1e-5f ? d / dist : glm::vec2(-1.0f, 0.0f);
         jogador_.posicao = mundo::moverComColisao(andar_.grade, jogador_.posicao, d * (minimo - dist), RAIO_JOGADOR);
     }
+    // Passos: metal na fábrica, pedra no esgoto e nas minas
+    andadoDesdePasso_ += glm::distance(antes, jogador_.posicao);
+    if (andadoDesdePasso_ >= DISTANCIA_PASSO) {
+        andadoDesdePasso_ -= DISTANCIA_PASSO;
+        tocar(andar_.zona == mundo::Zona::Fabrica ? Som::PassoMetal : Som::PassoPedra);
+    }
     if (c.usar) usar();
     if (c.usarRapido >= 1 && c.usarRapido <= 4) usarEspaco(c.usarRapido - 1);
     pegarAoPassar();
@@ -234,7 +259,17 @@ void Partida::atualizar(const Comandos& c, float dt) {
     const ResultadoAtaque ataque =
         atualizarArmas(armas_, inventario_, atributos_, c, jogador_.posicao, jogador_.angulo, jogador_.inclinacao,
                        andar_.grade, inimigos_, rng_, dt);
-    if (ataque.disparou) clarao_ = DURACAO_CLARAO;
+    if (ataque.disparou) {
+        clarao_ = DURACAO_CLARAO;
+        const TipoItem arma = inventario_.armaDeFogo().tipo;
+        tocar(arma == TipoItem::Bacamarte ? Som::DisparoBacamarte
+              : arma == TipoItem::Tesla   ? Som::DisparoTesla
+                                          : Som::DisparoRevolver);
+    }
+    if (ataque.golpeou && ataque.acertos == 0) tocar(Som::GolpeAr);
+    if (ataque.acertos > 0) tocar(Som::Acerto);
+    if (ataque.comecouRecarga) tocar(Som::Recarga);
+    if (ataque.vazia) tocar(Som::ArmaVazia);
     if (ataque.barulho > 0) acordarPorBarulho(inimigos_, jogador_.posicao, ataque.barulho);
     if (!ataque.mensagem.empty()) avisar(ataque.mensagem);
     recompensarDestruidos();
@@ -248,7 +283,8 @@ void Partida::atualizar(const Comandos& c, float dt) {
 
     // Inimigos e seus tiros
     EventosIA eventos = atualizarInimigos(inimigos_, {andar_.grade, jogador_.posicao, campo_, rng_, RAIO_JOGADOR}, dt);
-    for (const glm::ivec2& c2 : eventos.comportasParaAbrir) abrindo_.try_emplace(indice(c2.x, c2.y), 0.0f);
+    for (const glm::ivec2& c2 : eventos.comportasParaAbrir) abrirComporta(c2.x, c2.y);
+    for (const Projetil& t : eventos.tiros) tocar(Som::TiroInimigo, t.posicao);
     projeteis_.insert(projeteis_.end(), eventos.tiros.begin(), eventos.tiros.end());
     for (const Golpe& g : eventos.golpes) receberDano(g.dano, g.autor);
     const ResultadoProjeteis tiros = atualizarProjeteis(projeteis_, andar_.grade, jogador_.posicao, RAIO_JOGADOR, dt);
@@ -270,6 +306,7 @@ void Partida::atualizar(const Comandos& c, float dt) {
         andar_.chave.reset();
         temChave_ = true;
         avisar("Você pegou a válvula-chave");
+        tocar(Som::Pegar);
     }
 
     mundo::explorarAoRedor(exploracao_, andar_.grade, jogador_.posicao, mundo::RAIO_EXPLORACAO);

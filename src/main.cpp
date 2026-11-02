@@ -13,11 +13,15 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/trigonometric.hpp>
 
+#include "jogo/Config.h"
+#include "jogo/Demo.h"
 #include "jogo/IA.h"
 #include "jogo/Partida.h"
 #include "jogo/PassoFixo.h"
 #include "jogo/Placar.h"
+#include "jogo/Sons.h"
 #include "mundo/Gerador.h"
+#include "plataforma/Audio.h"
 #include "plataforma/Caminhos.h"
 #include "plataforma/Entrada.h"
 #include "plataforma/Janela.h"
@@ -35,10 +39,18 @@
 #include "render/Sprites.h"
 #include "render/TelaBaixa.h"
 #include "render/TelaInventario.h"
+#include "render/TelasMenu.h"
 #include "render/Texturas.h"
 #include "render/Zonas.h"
+#include "ui/Menus.h"
 
 namespace {
+
+constexpr const char* NOME_DO_JOGO = "Abaixo da Cidade de Latão";
+constexpr uint32_t SEMENTE_DO_FUNDO = 1;      // andar mostrado atrás do menu
+constexpr float GIRO_DO_FUNDO = 0.15f;        // rad/s
+constexpr int PASSOS_ENTRE_CAPTURAS_DEMO = 120;  // 2 s de jogo
+constexpr float LIMITE_DEMO = 180.0f;         // s de jogo
 
 // Opções de linha de comando para testes
 struct Opcoes {
@@ -48,12 +60,21 @@ struct Opcoes {
     float inclinacaoGraus = 0.0f;        // --inclinacao <graus>: olhar vertical inicial (+ para cima)
     std::optional<uint32_t> semente;     // --semente <n>: sem ela, a partida é aleatória
     int andar = 1;                       // --andar <n>: andar inicial
+    bool pediuAndar = false;
     bool mapaCompleto = false;           // --mapa-completo: revela o mapa e abre o automapa
     bool descrever = false;              // --descrever: grava o andar no log e sai sem janela
     std::optional<glm::vec2> posicao;    // --posicao <x> <z>: começa nesse ponto (testes)
     bool invencivel = false;             // --invencivel: o dano não reduz a vida (observar a IA)
     bool inventario = false;             // --inventario: começa com o inventário aberto (capturas)
-    std::string dados;                   // --dados <pasta>: placar fora do %APPDATA% (testes)
+    std::string dados;                   // --dados <pasta>: placar e opções fora do %APPDATA% (testes)
+    std::optional<uint32_t> demo;        // --demo <semente>: anda sozinho até o elevador tirando capturas
+    bool mudo = false;                   // --mudo: não abre o áudio
+    std::string tela;                    // --tela principal|opcoes|placar|pausa: abre essa tela (capturas)
+
+    // Começa direto na partida, sem o menu (cenários de teste e roteiros)
+    bool direto() const {
+        return semente || pediuAndar || posicao || !captura.empty() || invencivel || inventario || demo;
+    }
 };
 
 Opcoes lerOpcoes(int argc, char** argv) {
@@ -66,12 +87,18 @@ Opcoes lerOpcoes(int argc, char** argv) {
         else if (arg == "--angulo" && temValor) o.anguloGraus = std::stof(argv[++i]);
         else if (arg == "--inclinacao" && temValor) o.inclinacaoGraus = std::stof(argv[++i]);
         else if (arg == "--semente" && temValor) o.semente = static_cast<uint32_t>(std::stoul(argv[++i]));
-        else if (arg == "--andar" && temValor) o.andar = std::max(1, std::stoi(argv[++i]));
+        else if (arg == "--andar" && temValor) {
+            o.andar = std::max(1, std::stoi(argv[++i]));
+            o.pediuAndar = true;
+        }
         else if (arg == "--mapa-completo") o.mapaCompleto = true;
         else if (arg == "--descrever") o.descrever = true;
         else if (arg == "--invencivel") o.invencivel = true;
         else if (arg == "--inventario") o.inventario = true;
         else if (arg == "--dados" && temValor) o.dados = argv[++i];
+        else if (arg == "--demo" && temValor) o.demo = static_cast<uint32_t>(std::stoul(argv[++i]));
+        else if (arg == "--mudo") o.mudo = true;
+        else if (arg == "--tela" && temValor) o.tela = argv[++i];
         else if (arg == "--posicao" && i + 2 < argc) {
             const float x = std::stof(argv[++i]);
             o.posicao = glm::vec2(x, std::stof(argv[++i]));
@@ -79,6 +106,7 @@ Opcoes lerOpcoes(int argc, char** argv) {
     }
     return o;
 }
+
 
 const char* nomeZona(mundo::Zona z) {
     switch (z) {
@@ -221,22 +249,88 @@ int registrarNoPlacar(const jogo::Partida& p) {
     return posicao;
 }
 
+
+// Opções do jogador; config.txt corrompido é recriado com o padrão (seção 11 da spec)
+struct OpcoesLidas {
+    jogo::Config config;
+    bool podeGravar = true;  // falso se o arquivo existe mas não abriu (não sobrescrever)
+};
+
+OpcoesLidas lerOpcoesDoJogador(const std::filesystem::path& arquivo) {
+    const jogo::LeituraConfig leitura = jogo::lerConfig(arquivo);
+    if (leitura.erroDeLeitura) {
+        plataforma::logar("Não foi possível ler config.txt (arquivo em uso?); usando o padrão sem gravar: " +
+                          arquivo.string());
+        return {leitura.config, false};
+    }
+    if (leitura.estavaCorrompido) {
+        plataforma::logar(leitura.renomeado ? "config.txt corrompido: renomeado para config.txt.corrompido"
+                                            : "config.txt corrompido e não foi possível renomeá-lo; será substituído");
+        if (!jogo::gravarConfig(arquivo, leitura.config))
+            plataforma::logar("Não foi possível recriar " + arquivo.string());
+    }
+    return {leitura.config, true};
+}
+
+ui::Tela telaDaOpcao(const std::string& nome) {
+    if (nome == "principal") return ui::Tela::Principal;
+    if (nome == "opcoes") return ui::Tela::Opcoes;
+    if (nome == "placar") return ui::Tela::Placar;
+    if (nome == "pausa") return ui::Tela::Pausa;
+    return ui::Tela::Jogo;
+}
+
 }
 
 int main(int argc, char** argv) {
     plataforma::iniciarLog(plataforma::pastaDoExecutavel() / "log.txt");
+    int codigoSaida = 0;
     try {
         const Opcoes opcoes = lerOpcoes(argc, argv);
         if (!opcoes.dados.empty()) plataforma::definirPastaDeDados(opcoes.dados);
-        const uint32_t sementeInicial = opcoes.semente.value_or(std::random_device{}());
+        const uint32_t sementeInicial = opcoes.demo.value_or(opcoes.semente.value_or(std::random_device{}()));
         if (opcoes.descrever) {
             descreverAndar(sementeInicial, opcoes.andar);
             return 0;
         }
-
-        plataforma::Janela janela("Roguelike", 1280, 720);
-        plataforma::Entrada entrada(janela.sdl());
         const bool modoCaptura = !opcoes.captura.empty();
+        const bool modoDemo = opcoes.demo.has_value();
+        const bool automatico = modoCaptura || modoDemo;  // roda sozinho, sem teclado
+        // Roteiros automáticos só mexem em placar e opções numa pasta indicada com --dados (nunca no %APPDATA% do jogador)
+        const bool usaDadosDoJogador = !automatico || !opcoes.dados.empty();
+
+        // Opções do jogador
+        const std::filesystem::path arquivoConfig = plataforma::pastaDeDados() / "config.txt";
+        OpcoesLidas lidas;
+        if (usaDadosDoJogador) lidas = lerOpcoesDoJogador(arquivoConfig);
+        jogo::Config config = lidas.config;
+        const bool podeGravarConfig = usaDadosDoJogador && lidas.podeGravar;
+
+        plataforma::Janela janela(NOME_DO_JOGO, 1280, 720);
+        bool telaCheia = config.telaCheia && !automatico;
+        if (telaCheia) janela.definirTelaCheia(true);
+        plataforma::Entrada entrada(janela.sdl());
+        entrada.definirSensibilidade(jogo::radianosPorPixel(config.sensibilidade));
+        // Depois da janela: é destruído antes dela (que fecha a SDL)
+        std::optional<plataforma::Audio> audio;
+        if (!opcoes.mudo) {
+            audio.emplace();
+            audio->carregar();
+            audio->definirVolumes(config.volumeEfeitos, config.volumeMusica);
+            audio->tocarMusica();
+        }
+        auto tocar = [&](jogo::Som s, float volume = 1.0f, float pan = 0.0f) {
+            if (audio) audio->tocar(s, volume, pan);
+        };
+        // Opções que valem na hora (menu de opções)
+        auto aplicarConfig = [&] {
+            entrada.definirSensibilidade(jogo::radianosPorPixel(config.sensibilidade));
+            if (audio) audio->definirVolumes(config.volumeEfeitos, config.volumeMusica);
+            if (config.telaCheia != telaCheia && !automatico) {
+                telaCheia = config.telaCheia;
+                janela.definirTelaCheia(telaCheia);
+            }
+        };
 
         // Desenho
         render::TelaBaixa telaBaixa;
@@ -267,15 +361,20 @@ int main(int argc, char** argv) {
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
 
-        // Estado da partida em andamento (recriado com Enter na tela de fim)
+        // Partida em andamento; no menu, uma partida "de fundo" só para mostrar a masmorra
+        ui::Menus menus;
         std::unique_ptr<jogo::Partida> partida;
+        bool partidaDeFundo = false;
         jogo::Jogador anterior{};  // estado do passo anterior, para interpolar
         jogo::PassoFixo passo;
         int andarPreparado = 0;
         bool placarGravado = false;
         int posicaoPlacar = 0;
-        float tempoMorto = 0.0f;  // Enter só vale um pouco depois da morte (não pula a tela de fim)
+        float tempoMorto = 0.0f;  // a tela de fim só aceita teclas um pouco depois da morte
         std::optional<int> arrastando;  // espaço do inventário sendo arrastado
+        std::vector<jogo::RegistroPlacar> placarLido;
+        jogo::PilotoDemo piloto;
+        int passosDemo = 0, capturasDemo = 0;
 
         // Remonta o que depende do andar (malha fixa e cor da zona)
         auto prepararAndar = [&] {
@@ -289,7 +388,8 @@ int main(int argc, char** argv) {
         auto novaPartida = [&](uint32_t semente, int andar) {
             plataforma::logar(std::format("Partida com semente {} (andar inicial {})", semente, andar));
             partida = std::make_unique<jogo::Partida>(semente, andar);
-            if (opcoes.invencivel) partida->tornarInvencivel();
+            partidaDeFundo = false;
+            if (opcoes.invencivel || modoDemo) partida->tornarInvencivel();
             if (opcoes.mapaCompleto) partida->revelarMapa();
             placarGravado = false;
             posicaoPlacar = 0;
@@ -297,18 +397,46 @@ int main(int argc, char** argv) {
             passo.zerar();
             prepararAndar();
         };
-        novaPartida(sementeInicial, opcoes.andar);
-        partida->definirAngulo(glm::radians(opcoes.anguloGraus));
-        partida->definirInclinacao(glm::radians(opcoes.inclinacaoGraus));
-        if (opcoes.posicao) partida->definirPosicao(*opcoes.posicao);
-        anterior = partida->jogador();
-        if (opcoes.inventario) entrada.abrirInventario(true);
+        auto mostrarFundo = [&] {
+            partida = std::make_unique<jogo::Partida>(SEMENTE_DO_FUNDO, 1);
+            partidaDeFundo = true;
+            passo.zerar();
+            prepararAndar();
+        };
+        auto lerPlacarParaTela = [&] {
+            placarLido.clear();
+            if (!usaDadosDoJogador) return;
+            const jogo::LeituraPlacar l = jogo::lerPlacar(plataforma::pastaDeDados() / "placar.txt");
+            if (l.estavaCorrompido) plataforma::logar("placar.txt corrompido ao abrir a tela de placar");
+            placarLido = l.registros;
+        };
 
-        std::string tituloAtual;
+        if (opcoes.direto()) {
+            novaPartida(sementeInicial, opcoes.andar);
+            partida->definirAngulo(glm::radians(opcoes.anguloGraus));
+            partida->definirInclinacao(glm::radians(opcoes.inclinacaoGraus));
+            if (opcoes.posicao) partida->definirPosicao(*opcoes.posicao);
+            anterior = partida->jogador();
+            menus.abrir(ui::Tela::Jogo);
+            if (opcoes.inventario) entrada.abrirInventario(true);
+        } else {
+            mostrarFundo();
+            entrada.modoMenu(true);
+        }
+        // --tela: abre uma tela pronta para a captura
+        if (const ui::Tela t = telaDaOpcao(opcoes.tela); t != ui::Tela::Jogo) {
+            if (t != ui::Tela::Pausa && !partidaDeFundo) mostrarFundo();
+            if (t == ui::Tela::Placar) lerPlacarParaTela();
+            menus.abrir(t);
+            entrada.modoMenu(true);
+        }
+
+        SDL_SetWindowTitle(janela.sdl(), NOME_DO_JOGO);
         int quadro = 0;
-        float relogio = 0.0f;
         Uint64 ultimo = SDL_GetPerformanceCounter();
-        while (!entrada.pediuSair()) {
+        bool sair = false;
+        bool demoTerminou = false;
+        while (!entrada.pediuSair() && !sair) {
             SDL_Event e;
             while (SDL_PollEvent(&e)) entrada.processarEvento(e);
 
@@ -322,54 +450,111 @@ int main(int argc, char** argv) {
             const Uint64 agora = SDL_GetPerformanceCounter();
             double dt = static_cast<double>(agora - ultimo) / SDL_GetPerformanceFrequency();
             ultimo = agora;
-            if (modoCaptura) dt = passo.passo();  // captura: um passo por quadro, sem depender do relógio
-            relogio += static_cast<float>(dt);
+            if (automatico) dt = passo.passo();  // um passo por quadro, sem depender do relógio
 
-            // Na captura a lógica roda sozinha (sem comandos) para os inimigos agirem; o inventário aberto pausa
-            if ((entrada.capturado() || modoCaptura) && !entrada.inventarioAberto()) {
+            // Esc ou foco perdido no jogo: pausa (o inventário aberto fecha)
+            if (entrada.pediuPausa() && menus.tela() == ui::Tela::Jogo && !automatico) {
+                menus.focoPerdido();
+                entrada.modoMenu(true);
+                arrastando.reset();
+            }
+
+            // Lógica: só no jogo; o inventário aberto pausa; a captura e a demo rodam sem teclado
+            bool capturarQuadroDemo = false;
+            if (menus.tela() == ui::Tela::Jogo && (entrada.capturado() || automatico) && !entrada.inventarioAberto()) {
                 const int passos = passo.adicionar(dt);
                 for (int i = 0; i < passos; ++i) {
                     anterior = partida->jogador();
+                    const float dtPasso = static_cast<float>(passo.passo());
                     // Giro e eventos vão no primeiro passo; coletar() já os zera para os seguintes
-                    partida->atualizar(modoCaptura ? jogo::Comandos{} : entrada.coletar(),
-                                       static_cast<float>(passo.passo()));
+                    const jogo::Comandos c = modoDemo      ? piloto.comandar(*partida, dtPasso)
+                                             : modoCaptura ? jogo::Comandos{}
+                                                           : entrada.coletar();
+                    partida->atualizar(c, dtPasso);
+                    for (const jogo::EventoSom& s : partida->sons()) {
+                        const jogo::Mixagem m = jogo::mixar(s, partida->jogador().posicao, partida->jogador().angulo);
+                        tocar(s.som, m.volume, m.pan);
+                    }
+                    if (modoDemo && ++passosDemo % PASSOS_ENTRE_CAPTURAS_DEMO == 0) capturarQuadroDemo = true;
                 }
             } else {
                 passo.zerar();
                 entrada.descartarGiro();
                 anterior = partida->jogador();
             }
+            if (partidaDeFundo) {  // a câmera gira devagar atrás do menu
+                partida->definirAngulo(partida->jogador().angulo + GIRO_DO_FUNDO * static_cast<float>(dt));
+                anterior = partida->jogador();
+            }
 
-            // Morte: grava o placar uma vez e solta o mouse; Enter começa outra partida
+            // Morte: grava o placar uma vez, solta o mouse e mostra a tela de fim
             if (partida->morto() && !placarGravado) {
-                // Capturas de teste só gravam placar numa pasta indicada com --dados (nunca no %APPDATA% do jogador)
-                if (!modoCaptura || !opcoes.dados.empty()) posicaoPlacar = registrarNoPlacar(*partida);
+                if (usaDadosDoJogador) posicaoPlacar = registrarNoPlacar(*partida);
                 placarGravado = true;
-                if (entrada.inventarioAberto()) entrada.abrirInventario(false);
-                entrada.soltarMouse();
+                menus.abrir(ui::Tela::Fim);
+                entrada.modoMenu(true);
                 arrastando.reset();
             }
-            // Na captura o teclado é ignorado (a janela rouba o foco e pode receber teclas digitadas em outro lugar)
             if (partida->morto()) tempoMorto += static_cast<float>(dt);
-            const bool pediuNova = entrada.pediuNovaPartida();  // consome sempre (Enter antes da hora não fica guardado)
-            if (pediuNova && partida->morto() && tempoMorto > 0.5f && !modoCaptura) novaPartida(std::random_device{}(), 1);
+
+            // Demo: chegou ao elevador ou desistiu
+            bool fimDaDemo = false;
+            if (modoDemo && partida->trocasDeAndar() > 0) {
+                plataforma::logar(std::format("demo: chegou ao elevador em {:.1f} s", passosDemo * passo.passo()));
+                capturarQuadroDemo = fimDaDemo = true;
+            } else if (modoDemo && passosDemo * passo.passo() > LIMITE_DEMO) {
+                plataforma::logar(std::format("demo: não chegou ao elevador em {:.0f} s", LIMITE_DEMO));
+                capturarQuadroDemo = fimDaDemo = true;
+                codigoSaida = 2;
+            }
 
             // Andar novo: remonta a malha e não interpola a partir do andar anterior
             if (partida->trocasDeAndar() != andarPreparado) prepararAndar();
+
+            // Menus (pausa, opções, placar, fim)
+            const ui::Tela telaAtual = menus.tela();
+            std::vector<render::Retangulo> itensNaTela;
+            if (telaAtual == ui::Tela::Placar) itensNaTela = render::layoutPlacar(telaL, telaA);
+            else if (telaAtual != ui::Tela::Jogo && telaAtual != ui::Tela::Fim)
+                itensNaTela = render::layoutMenu(static_cast<int>(menus.itens(config).size()), telaL, telaA);
+            if (telaAtual != ui::Tela::Jogo) {
+                int janelaL = 0, janelaA = 0;
+                SDL_GetWindowSize(janela.sdl(), &janelaL, &janelaA);
+                const glm::vec2 mouse = render::janelaParaTelaBaixa(entrada.posicaoMouse(), {janelaL, janelaA},
+                                                                    janela.tamanhoDesenhavel(), telaL, telaA);
+                ui::EntradaMenu em = entrada.coletarMenu();
+                em.itemSobMouse = render::itemSob(itensNaTela, mouse);
+                // Na captura o teclado é ignorado; na tela de fim, só depois de meio segundo
+                if (automatico || (telaAtual == ui::Tela::Fim && tempoMorto <= 0.5f)) em = {};
+                const int selecionadoAntes = menus.selecionado();
+                const bool confirmou = em.confirmar || (em.clique && em.itemSobMouse);
+                const ui::Acao acao = menus.atualizar(em, config);
+                if (menus.tela() == telaAtual && menus.selecionado() != selecionadoAntes) tocar(jogo::Som::MenuMover);
+                if (confirmou || acao == ui::Acao::OpcoesMudaram) tocar(jogo::Som::MenuConfirmar);
+                switch (acao) {
+                    case ui::Acao::NovoJogo:
+                        novaPartida(config.semente.value_or(std::random_device{}()), 1);
+                        entrada.entrarNoJogo();
+                        break;
+                    case ui::Acao::Continuar: entrada.entrarNoJogo(); break;
+                    case ui::Acao::Abandonar: mostrarFundo(); break;
+                    case ui::Acao::Sair: sair = true; break;
+                    case ui::Acao::OpcoesMudaram: aplicarConfig(); break;
+                    case ui::Acao::SalvarOpcoes:
+                        aplicarConfig();
+                        if (podeGravarConfig && !jogo::gravarConfig(arquivoConfig, config))
+                            plataforma::logar("Não foi possível gravar " + arquivoConfig.string());
+                        break;
+                    case ui::Acao::AbrirPlacar: lerPlacarParaTela(); break;
+                    default: break;
+                }
+            }
 
             const float alfa = static_cast<float>(passo.alfa());
             const glm::vec2 pos = glm::mix(anterior.posicao, partida->jogador().posicao, alfa);
             const float ang = glm::mix(anterior.angulo, partida->jogador().angulo, alfa);
             const float incl = glm::mix(anterior.inclinacao, partida->jogador().inclinacao, alfa);
-
-            // Título só muda quando o texto muda
-            const std::string titulo = entrada.inventarioAberto()                      ? "Roguelike — Inventário"
-                                       : entrada.capturado() || partida->morto() ? "Roguelike"
-                                                                                 : "Roguelike  (clique para jogar, Esc solta o mouse)";
-            if (titulo != tituloAtual) {
-                SDL_SetWindowTitle(janela.sdl(), titulo.c_str());
-                tituloAtual = titulo;
-            }
+            const ui::Tela tela = menus.tela();
 
             // Cena na imagem pequena
             telaBaixa.comecar();
@@ -404,22 +589,23 @@ int main(int argc, char** argv) {
             malhaSprites.enviar(render::construirSprites(sprites, pos), true);
             malhaSprites.desenhar();
 
-            // HUD (arma na mão por baixo, depois barras/flash e texto)
-            const render::ElementosHud hud = render::construirHud(estadoHud(*partida), telaL, telaA);
-            if (!entrada.inventarioAberto()) {  // o inventário cobre o HUD
+            // HUD (arma na mão por baixo, depois barras/flash e texto); só no jogo e na tela de fim
+            const bool mostrarHud = !partidaDeFundo && (tela == ui::Tela::Jogo || tela == ui::Tela::Fim);
+            if (mostrarHud && !entrada.inventarioAberto()) {  // o inventário e os menus cobrem o HUD
+                const render::ElementosHud hud = render::construirHud(estadoHud(*partida), telaL, telaA);
                 if (!partida->morto()) desenhoTextura.desenhar(hud.arma, texturasArmas, telaL, telaA);
                 desenho2D.desenhar(hud.cores, telaL, telaA);
                 desenhoTextura.desenhar(hud.icones, texturasSprites, telaL, telaA);
                 desenhoTextura.desenhar(hud.texto, fonte, telaL, telaA);
             }
 
-            if (entrada.mapaVisivel() || opcoes.mapaCompleto)
+            if (tela == ui::Tela::Jogo && (entrada.mapaVisivel() || opcoes.mapaCompleto))
                 desenho2D.desenhar(render::construirAutomapa(partida->andar().grade, partida->exploracao(), pos, ang,
                                                              partida->andar().chave, telaL, telaA),
                                    telaL, telaA);
 
             // Inventário: clique usa/equipa, arrastar troca, botão direito larga no chão
-            if (entrada.inventarioAberto()) {
+            if (tela == ui::Tela::Jogo && entrada.inventarioAberto()) {
                 int janelaL = 0, janelaA = 0;
                 SDL_GetWindowSize(janela.sdl(), &janelaL, &janelaA);
                 const glm::vec2 mouse = render::janelaParaTelaBaixa(entrada.posicaoMouse(), {janelaL, janelaA},
@@ -435,32 +621,57 @@ int main(int argc, char** argv) {
                     arrastando.reset();
                 }
                 if (cliques.direito && sobEspaco) partida->largarEspaco(*sob);
-                const render::ElementosInventario tela =
+                const render::ElementosInventario telaInv =
                     render::construirInventario(partida->inventario(), layout, sob, arrastando, mouse);
-                desenho2D.desenhar(tela.cores, telaL, telaA);
-                desenhoTextura.desenhar(tela.icones, texturasSprites, telaL, telaA);
-                desenhoTextura.desenhar(tela.texto, fonte, telaL, telaA);
+                desenho2D.desenhar(telaInv.cores, telaL, telaA);
+                desenhoTextura.desenhar(telaInv.icones, texturasSprites, telaL, telaA);
+                desenhoTextura.desenhar(telaInv.texto, fonte, telaL, telaA);
             } else {
                 arrastando.reset();
             }
 
-            if (partida->morto()) {
+            if (tela == ui::Tela::Fim) {
                 const render::ElementosHud fim = render::construirTelaFim(
                     {partida->andar().numero, partida->nivel(), partida->inimigosDestruidos(), partida->engrenagens(),
                      partida->pontuacao(), partida->semente(), partida->causaDaMorte(), posicaoPlacar},
                     telaL, telaA);
                 desenho2D.desenhar(fim.cores, telaL, telaA);
                 desenhoTextura.desenhar(fim.texto, fonte, telaL, telaA);
+            } else if (tela != ui::Tela::Jogo) {
+                const render::ElementosHud m =
+                    tela == ui::Tela::Placar
+                        ? render::construirPlacar(placarLido, telaL, telaA)
+                        : render::construirMenu({menus.titulo(), menus.itens(config), menus.selecionado()}, telaL, telaA);
+                desenho2D.desenhar(m.cores, telaL, telaA);
+                desenhoTextura.desenhar(m.texto, fonte, telaL, telaA);
             }
 
             // Ampliada na janela
-            const glm::ivec2 tela = janela.tamanhoDesenhavel();
-            telaBaixa.apresentar(tela);
+            const glm::ivec2 tamanho = janela.tamanhoDesenhavel();
+            telaBaixa.apresentar(tamanho);
             if (modoCaptura && ++quadro == opcoes.quadroCaptura) {
-                salvarCaptura(tela, opcoes.captura);
+                salvarCaptura(tamanho, opcoes.captura);
+                break;
+            }
+            if (capturarQuadroDemo) {
+                const std::filesystem::path pasta = plataforma::pastaDoExecutavel() / "capturas";
+                std::error_code erro;
+                std::filesystem::create_directories(pasta, erro);
+                salvarCaptura(tamanho, (pasta / std::format("demo_{}_{:02}.bmp", *opcoes.demo, ++capturasDemo)).string());
+            }
+            if (fimDaDemo) {
+                demoTerminou = true;
                 break;
             }
             janela.trocarBuffers();
+        }
+        // Fechou a janela (X, Alt+F4) com a tela de opções aberta: não perde o que mudou
+        if (menus.tela() == ui::Tela::Opcoes && podeGravarConfig && !jogo::gravarConfig(arquivoConfig, config))
+            plataforma::logar("Não foi possível gravar " + arquivoConfig.string());
+        // Demo fechada por fora: não conta como sucesso (o teste do pacote depende disso)
+        if (modoDemo && !demoTerminou) {
+            plataforma::logar("demo: interrompida antes de chegar ao elevador");
+            codigoSaida = 3;
         }
         glDeleteTextures(1, &fonte);
         glDeleteTextures(1, &texturasArmas);
@@ -471,5 +682,5 @@ int main(int argc, char** argv) {
         plataforma::mostrarErroFatal(erro.what());
         return 1;
     }
-    return 0;
+    return codigoSaida;
 }

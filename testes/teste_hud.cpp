@@ -108,3 +108,13 @@ TEST_CASE("tela de fim só fala do placar se entrou nele") {
     auto com = render::construirTelaFim(d, 480, 270).texto.size();
     CHECK(com == sem + render::construirTexto("3º lugar no placar!", {0, 0}, 1, glm::vec4(1)).size());
 }
+
+TEST_CASE("tela de fim mostra como continuar") {
+    const auto h = render::construirTelaFim({3, 2, 10, 50, 560, 42u, "Destruído por um Rato", 0}, 480, 270);
+    const std::string rodape = "Enter: nova partida   Esc: menu";
+    const auto esperado = render::construirTexto(rodape, {0, 0}, 1, glm::vec4(1));
+    REQUIRE(h.texto.size() >= esperado.size());
+    const size_t inicio = h.texto.size() - esperado.size();
+    for (size_t k = 0; k < esperado.size(); ++k) REQUIRE(h.texto[inicio + k].camada == esperado[k].camada);
+    CHECK(render::larguraTexto(rodape, 1) <= 480);
+}
