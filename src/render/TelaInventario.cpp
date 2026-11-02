@@ -1,5 +1,6 @@
 #include "render/TelaInventario.h"
 
+#include <cmath>
 #include <format>
 
 #include "render/Icones.h"
@@ -10,6 +11,7 @@ namespace render {
 namespace {
 
 constexpr int LADO_ESPACO = 36, FOLGA = 4, LADO_ICONE = 32, ICONE_ARRASTADO = 16;
+constexpr float ENTRE_LINHAS = 9;  // detalhes do item (cabem 6 linhas abaixo da grade)
 constexpr glm::vec4 COR_PAINEL{0.06f, 0.05f, 0.04f, 0.88f};
 constexpr glm::vec4 COR_FUNDO_ESPACO{0.14f, 0.12f, 0.10f, 1.0f};
 constexpr glm::vec4 COR_SOB_MOUSE{0.30f, 0.26f, 0.20f, 1.0f};
@@ -51,10 +53,15 @@ LayoutInventario layoutInventario(int telaL, int telaA) {
     for (int i = 0; i < jogo::ESPACOS_INVENTARIO; ++i)
         l.espacos[static_cast<size_t>(i)] = {x0 + (i % 4) * (LADO_ESPACO + FOLGA), y0 + (i / 4) * (LADO_ESPACO + FOLGA),
                                              LADO_ESPACO, LADO_ESPACO};
+    const int xDireita = x0 + grade + 20;
     for (int k = 0; k < 3; ++k)
-        l.equipados[static_cast<size_t>(k)] = {x0 + grade + 32, y0 + k * (LADO_ESPACO + 14), LADO_ESPACO, LADO_ESPACO};
+        l.equipados[static_cast<size_t>(k)] = {xDireita, y0 + k * (LADO_ESPACO + 14), LADO_ESPACO, LADO_ESPACO};
+    // Embaixo da armadura, na coluna da direita, com as dicas logo abaixo
+    l.largar = {xDireita, y0 + 3 * (LADO_ESPACO + 14) + 2, l.painel.x + larguraPainel - 8 - xDireita, 24};
     return l;
 }
+
+bool sobLargar(const LayoutInventario& l, glm::vec2 ponto) { return contem(l.largar, ponto) || !contem(l.painel, ponto); }
 
 std::optional<int> espacoSob(const LayoutInventario& l, glm::vec2 ponto) {
     for (int i = 0; i < jogo::ESPACOS_INVENTARIO; ++i)
@@ -122,33 +129,50 @@ ElementosInventario construirInventario(const jogo::Inventario& inv, const Layou
     const jogo::Item* detalhe = nullptr;
     if (sobMouse && *sobMouse < jogo::ESPACOS_INVENTARIO && inv.espaco(*sobMouse)) detalhe = &*inv.espaco(*sobMouse);
     else if (sobMouse && *sobMouse >= jogo::ESPACOS_INVENTARIO) detalhe = equipados[*sobMouse - jogo::ESPACOS_INVENTARIO];
-    const float yDetalhe = static_cast<float>(l.espacos[15].y + LADO_ESPACO + 8);
+    const float yDetalhe = static_cast<float>(l.espacos[15].y + LADO_ESPACO + 6);
     if (detalhe) {
         const glm::vec4 cor = detalhe->qualidade == jogo::Qualidade::Comum ? COR_TEXTO : corDaQualidade(detalhe->qualidade);
         const float x0 = static_cast<float>(l.espacos[0].x);
-        texto(e.texto, jogo::nomeItem(*detalhe), {x0, yDetalhe}, cor);
-        // A descrição quebra entre os atributos (separados por 3 espaços) para não sair do painel
-        const float larguraMaxima = static_cast<float>(l.painel.x + l.painel.largura) - 8 - x0;
-        const std::string descricao = descricaoItem(*detalhe);
-        std::string linha;
-        float y = yDetalhe + 10;
-        for (size_t inicio = 0; inicio < descricao.size();) {
-            const size_t corte = descricao.find("   ", inicio);
-            const std::string parte = descricao.substr(inicio, corte == std::string::npos ? std::string::npos : corte - inicio);
-            const std::string tentativa = linha.empty() ? parte : linha + "   " + parte;
-            if (!linha.empty() && larguraTexto(tentativa, 1) > larguraMaxima) {
-                texto(e.texto, linha, {x0, y}, COR_TEXTO);
-                y += 10;
-                linha = parte;
-            } else {
-                linha = tentativa;
+        // Nome (quebra entre palavras) e descrição (quebra entre atributos, separados por 3 espaços),
+        // sem invadir a coluna da direita
+        const float larguraMaxima = static_cast<float>(l.largar.x) - 8 - x0;
+        float y = yDetalhe;
+        const auto quebrado = [&](const std::string& s, std::string_view separador, glm::vec4 corLinha) {
+            std::string linha;
+            for (size_t inicio = 0; inicio < s.size();) {
+                const size_t corte = s.find(separador, inicio);
+                const std::string parte = s.substr(inicio, corte == std::string::npos ? std::string::npos : corte - inicio);
+                const std::string tentativa = linha.empty() ? parte : linha + std::string(separador) + parte;
+                if (!linha.empty() && larguraTexto(tentativa, 1) > larguraMaxima) {
+                    texto(e.texto, linha, {x0, y}, corLinha);
+                    y += ENTRE_LINHAS;
+                    linha = parte;
+                } else {
+                    linha = tentativa;
+                }
+                inicio = corte == std::string::npos ? s.size() : corte + separador.size();
             }
-            inicio = corte == std::string::npos ? descricao.size() : corte + 3;
-        }
-        if (!linha.empty()) texto(e.texto, linha, {x0, y}, COR_TEXTO);
+            if (!linha.empty()) {
+                texto(e.texto, linha, {x0, y}, corLinha);
+                y += ENTRE_LINHAS;
+            }
+        };
+        quebrado(jogo::nomeItem(*detalhe), " ", cor);
+        quebrado(descricaoItem(*detalhe), "   ", COR_TEXTO);
     }
-    texto(e.texto, "Clique: usar ou equipar", {static_cast<float>(l.espacos[0].x), yDetalhe + 32}, COR_COMUM);
-    texto(e.texto, "Direito: largar   Arrastar: trocar", {static_cast<float>(l.espacos[0].x), yDetalhe + 42}, COR_COMUM);
+    // Caixa de largar (acende com um item arrastado em cima) e as dicas embaixo dela
+    const bool soltandoNela = arrastando && *arrastando < jogo::ESPACOS_INVENTARIO && contem(l.largar, mouse);
+    adicionarRetangulo(e.cores, p(l.largar), fim(l.largar), arrastando ? COR_LATAO : COR_COMUM);
+    adicionarRetangulo(e.cores, p(l.largar) + 1.0f, fim(l.largar) - 1.0f, soltandoNela ? COR_SOB_MOUSE : COR_FUNDO_ESPACO);
+    const std::string_view rotulo = "Largar aqui";
+    texto(e.texto, rotulo,
+          {std::floor(l.largar.x + (l.largar.largura - larguraTexto(rotulo, 1)) / 2.0f), static_cast<float>(l.largar.y + 8)},
+          arrastando ? COR_LATAO : COR_TEXTO);
+    float yDica = static_cast<float>(l.largar.y + l.largar.altura + 6);
+    for (const char* dica : {"Clique: usar", "Direito: largar", "Arraste: trocar"}) {
+        texto(e.texto, dica, {static_cast<float>(l.largar.x), yDica}, COR_TEXTO);
+        yDica += 10;
+    }
 
     // O item arrastado acompanha o mouse (por último)
     if (arrastando && *arrastando < jogo::ESPACOS_INVENTARIO && inv.espaco(*arrastando)) {

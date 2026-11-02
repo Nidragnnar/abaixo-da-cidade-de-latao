@@ -618,6 +618,7 @@ int main(int argc, char** argv) {
                 if (cliques.soltou && arrastando) {
                     if (sobEspaco && *sob == *arrastando) partida->usarEspaco(*sob);
                     else if (sobEspaco) partida->trocarEspacos(*arrastando, *sob);
+                    else if (render::sobLargar(layout, mouse)) partida->largarEspaco(*arrastando);
                     arrastando.reset();
                 }
                 if (cliques.direito && sobEspaco) partida->largarEspaco(*sob);

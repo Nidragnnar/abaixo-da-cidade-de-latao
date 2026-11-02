@@ -16,6 +16,7 @@ struct LayoutInventario {
     Retangulo painel;
     std::array<Retangulo, jogo::ESPACOS_INVENTARIO> espacos;  // grade 4×4; a primeira linha são os itens rápidos 1–4
     std::array<Retangulo, 3> equipados;                     // arma branca, arma de fogo, armadura
+    Retangulo largar;                                       // soltar um item arrastado aqui o larga no chão
 };
 
 // Grade 4×4 de 36 px com 4 px de folga e os equipados numa coluna à direita, centralizados na tela baixa
@@ -23,6 +24,9 @@ LayoutInventario layoutInventario(int telaL, int telaA);
 
 // 0–15: espaços; 16–18: equipados; nada fora deles
 std::optional<int> espacoSob(const LayoutInventario& l, glm::vec2 ponto);
+
+// Soltar o item arrastado aqui o larga no chão: a caixa "Largar aqui" ou qualquer ponto fora do painel
+bool sobLargar(const LayoutInventario& l, glm::vec2 ponto);
 
 // "Dano 6–9   Intervalo 0,50 s", "Defesa 3", "Cura 15 de vida" (já com os bônus)
 std::string descricaoItem(const jogo::Item& i);

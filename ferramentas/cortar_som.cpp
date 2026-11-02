@@ -1,7 +1,11 @@
 // Prepara um som baixado de um pacote: corta um trecho, passa para mono, suaviza o começo e o fim e normaliza o pico.
-// Uso: cortar_som analisar <entrada.wav>
-//      cortar_som <entrada.wav> <saida.wav> <inicio_s> <fim_s> [pico 0–1, padrão 0,9]
-// Só WAV PCM de 8, 16 ou 24 bits (o que os pacotes da OpenGameArt usam).
+// Uso: cortar_som analisar <entrada>
+//      cortar_som <entrada> <saida.wav> <inicio_s> <fim_s> [pico 0–1, padrão 0,9] [saída suave em s, padrão 0,04]
+// Entrada: WAV PCM de 8, 16 ou 24 bits, ou OGG (decodificado pelo SDL_mixer em 22.050 Hz mono).
+#define SDL_MAIN_HANDLED
+#include <SDL.h>
+#include <SDL_mixer.h>
+
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -23,7 +27,25 @@ struct Wav {
 uint32_t u32(const std::vector<unsigned char>& b, size_t p) { return b[p] | b[p + 1] << 8 | b[p + 2] << 16 | uint32_t(b[p + 3]) << 24; }
 uint16_t u16(const std::vector<unsigned char>& b, size_t p) { return static_cast<uint16_t>(b[p] | b[p + 1] << 8); }
 
+// OGG pelo SDL_mixer (áudio de mentira: nada toca); o pedaço já vem em 22.050 Hz, 16 bits, mono
+bool lerOgg(const char* arquivo, Wav& w) {
+    SDL_setenv("SDL_AUDIODRIVER", "dummy", 1);
+    if (SDL_Init(SDL_INIT_AUDIO) != 0 || Mix_OpenAudio(22050, AUDIO_S16SYS, 1, 1024) != 0) return false;
+    Mix_Chunk* c = Mix_LoadWAV(arquivo);
+    if (c) {
+        w.taxa = 22050;
+        const auto* s = reinterpret_cast<const int16_t*>(c->abuf);
+        for (Uint32 i = 0; i < c->alen / 2; ++i) w.amostras.push_back(s[i] / 32768.0f);
+        Mix_FreeChunk(c);
+    }
+    Mix_CloseAudio();
+    SDL_Quit();
+    return c != nullptr;
+}
+
 bool ler(const char* arquivo, Wav& w) {
+    const std::string nome = arquivo;
+    if (nome.size() > 4 && nome.substr(nome.size() - 4) == ".ogg") return lerOgg(arquivo, w);
     std::ifstream f(arquivo, std::ios::binary);
     const std::vector<unsigned char> b((std::istreambuf_iterator<char>(f)), {});
     if (b.size() < 44 || std::memcmp(b.data(), "RIFF", 4) || std::memcmp(b.data() + 8, "WAVE", 4)) return false;
@@ -114,9 +136,10 @@ int main(int argc, char** argv) {
     const size_t fim = std::clamp(static_cast<size_t>(std::atof(argv[4]) * w.taxa), inicio, w.amostras.size());
     Wav saida{w.taxa, std::vector<float>(w.amostras.begin() + static_cast<std::ptrdiff_t>(inicio),
                                          w.amostras.begin() + static_cast<std::ptrdiff_t>(fim))};
-    // 5 ms de entrada e 40 ms de saída evitam estalos no corte
+    // 5 ms de entrada e (por padrão) 40 ms de saída evitam estalos no corte; saída longa = som que some aos poucos
+    const double segundosSaida = argc > 6 ? std::atof(argv[6]) : 0.04;
     const size_t entrada = std::min(saida.amostras.size(), static_cast<size_t>(w.taxa / 200));
-    const size_t saidaSuave = std::min(saida.amostras.size(), static_cast<size_t>(w.taxa / 25));
+    const size_t saidaSuave = std::min(saida.amostras.size(), std::max<size_t>(1, static_cast<size_t>(segundosSaida * w.taxa)));
     for (size_t i = 0; i < entrada; ++i) saida.amostras[i] *= static_cast<float>(i) / entrada;
     for (size_t i = 0; i < saidaSuave; ++i) saida.amostras[saida.amostras.size() - 1 - i] *= static_cast<float>(i) / saidaSuave;
     float pico = 0;

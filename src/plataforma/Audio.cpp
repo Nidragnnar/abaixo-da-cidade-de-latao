@@ -17,6 +17,7 @@ namespace plataforma {
 namespace {
 
 constexpr int CANAIS = 32;
+constexpr float VOLUME_BASE_MUSICA = 0.6f;  // a faixa baixada vem bem mais alta que os efeitos
 
 // Arquivos que existem para o som, na ordem de preferência: .ogg, depois .wav
 std::vector<std::filesystem::path> arquivosDoSom(std::string_view nome) {
@@ -107,7 +108,7 @@ void Audio::tocarMusica() {
 
 void Audio::definirVolumes(int efeitos, int musica) {
     volumeEfeitos_ = std::clamp(efeitos, 0, 10) / 10.0f;
-    if (ativo_) Mix_VolumeMusic(volumeMixer(std::clamp(musica, 0, 10) / 10.0f));
+    if (ativo_) Mix_VolumeMusic(volumeMixer(std::clamp(musica, 0, 10) / 10.0f * VOLUME_BASE_MUSICA));
 }
 
 }

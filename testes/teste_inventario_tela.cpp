@@ -4,6 +4,7 @@
 
 #include "jogo/Inventario.h"
 #include "render/TelaInventario.h"
+#include "render/Texto.h"
 
 namespace {
 glm::vec2 centro(render::Retangulo r) { return {r.x + r.largura / 2.0f, r.y + r.altura / 2.0f}; }
@@ -76,5 +77,66 @@ TEST_CASE("textos do inventário não saem do painel") {
         inv.equipar(1);
         auto e = render::construirInventario(inv, l, 17, std::nullopt, {0, 0});  // mouse sobre a arma de fogo
         for (const auto& v : e.texto) REQUIRE(v.posicao.x <= direita);
+    }
+}
+
+TEST_CASE("caixa de largar visível dentro do painel, sem cobrir espaços nem equipados") {
+    auto l = render::layoutInventario(480, 270);
+    const auto& r = l.largar;
+    CHECK(r.largura >= 80);
+    CHECK(r.altura >= 20);
+    CHECK(r.x >= l.painel.x);
+    CHECK(r.y >= l.painel.y);
+    CHECK(r.x + r.largura <= l.painel.x + l.painel.largura);
+    CHECK(r.y + r.altura <= l.painel.y + l.painel.altura);
+    const auto separados = [](const render::Retangulo& p, const render::Retangulo& q) {
+        return p.x + p.largura <= q.x || q.x + q.largura <= p.x || p.y + p.altura <= q.y || q.y + q.altura <= p.y;
+    };
+    for (const auto& e : l.espacos) CHECK(separados(r, e));
+    for (const auto& e : l.equipados) CHECK(separados(r, e));
+    CHECK(render::sobLargar(l, centro(r)));
+    CHECK_FALSE(render::sobLargar(l, centro(l.espacos[0])));
+}
+
+TEST_CASE("soltar fora do painel também larga") {
+    auto l = render::layoutInventario(480, 270);
+    CHECK(render::sobLargar(l, {2, 2}));
+    CHECK(render::sobLargar(l, {static_cast<float>(l.painel.x + l.painel.largura + 5), 100}));
+    CHECK_FALSE(render::sobLargar(l, {static_cast<float>(l.painel.x + 4), static_cast<float>(l.painel.y + 4)}));
+}
+
+TEST_CASE("textos não invadem a caixa de largar (só o rótulo dela)") {
+    auto l = render::layoutInventario(480, 270);
+    const auto& r = l.largar;
+    for (auto tipo : {jogo::TipoItem::Tesla, jogo::TipoItem::Bacamarte, jogo::TipoItem::Revolver}) {
+        jogo::Inventario inv;
+        jogo::Item arma = jogo::criarItem(tipo);
+        arma.qualidade = jogo::Qualidade::ObraPrima;
+        arma.bonus = {{jogo::TipoBonus::Dano, 9}, {jogo::TipoBonus::Velocidade, 20}};
+        inv.adicionar(arma);
+        auto e = render::construirInventario(inv, l, 1, std::nullopt, {0, 0});  // detalhes do item novo
+        const auto rotulo = render::construirTexto("Largar aqui", {0, 0}, 1, glm::vec4(1));
+        size_t dentro = 0;
+        for (size_t g = 0; g + 6 <= e.texto.size(); g += 6) {
+            const glm::vec2 a = e.texto[g].posicao;  // canto de cima à esquerda do glifo
+            if (a.x + 8 > r.x && a.x < r.x + r.largura && a.y + 8 > r.y && a.y < r.y + r.altura) dentro += 6;
+        }
+        CHECK(dentro == rotulo.size());
+    }
+}
+
+TEST_CASE("detalhes de obra-prima com nome longo cabem embaixo no painel") {
+    auto l = render::layoutInventario(480, 270);
+    const float baixo = static_cast<float>(l.painel.y + l.painel.altura);
+    for (auto tipo : {jogo::TipoItem::Tesla, jogo::TipoItem::Bacamarte, jogo::TipoItem::Revolver, jogo::TipoItem::ArmaduraLatao}) {
+        jogo::Inventario inv;
+        jogo::Item item = jogo::criarItem(tipo);
+        item.qualidade = jogo::Qualidade::ObraPrima;
+        item.bonus = jogo::classe(tipo) == jogo::ClasseItem::Armadura
+                         ? std::vector<jogo::Bonus>{{jogo::TipoBonus::Defesa, 9}, {jogo::TipoBonus::VidaMaxima, 20}}
+                         : std::vector<jogo::Bonus>{{jogo::TipoBonus::Dano, 9}, {jogo::TipoBonus::Recarga, 30}};
+        inv.adicionar(item);
+        auto e = render::construirInventario(inv, l, 1, std::nullopt, {0, 0});
+        for (const auto& v : e.texto) REQUIRE(v.posicao.y <= baixo);
     }
 }

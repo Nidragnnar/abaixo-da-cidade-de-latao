@@ -111,3 +111,4 @@ configurar_alvo(gerar_sons)
 # Corta e normaliza sons baixados de pacotes (não faz parte do jogo): ferramentas\preparar_sons.ps1
 add_executable(cortar_som EXCLUDE_FROM_ALL ferramentas/cortar_som.cpp)
 configurar_alvo(cortar_som)
+target_link_libraries(cortar_som PRIVATE SDL2::SDL2 SDL2_mixer::SDL2_mixer)  # para ler OGG
