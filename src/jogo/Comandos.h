@@ -7,6 +7,7 @@ struct Comandos {
     float frente = 0;  // [-1, 1]
     float lado = 0;    // [-1, 1], positivo = direita
     float giro = 0;    // radianos, já com a sensibilidade aplicada
+    bool usar = false;  // tecla E apertada (evento: vale só num passo)
 };
 
 }

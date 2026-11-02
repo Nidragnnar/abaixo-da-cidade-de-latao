@@ -28,7 +28,7 @@ void moverEixo(const Grade& grade, glm::vec2& p, float delta, int eixo, float ra
     int limite = delta > 0 ? std::numeric_limits<int>::max() : std::numeric_limits<int>::min();
     for (int y = y0; y <= y1; ++y)
         for (int x = x0; x <= x1; ++x)
-            if (grade.solida(x, y)) {
+            if (grade.bloqueiaPassagem(x, y)) {
                 const int c = eixo == 0 ? x : y;
                 limite = delta > 0 ? std::min(limite, c) : std::max(limite, c);
                 bateu = true;

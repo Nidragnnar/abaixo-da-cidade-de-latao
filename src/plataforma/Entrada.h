@@ -13,8 +13,13 @@ public:
     void processarEvento(const SDL_Event& e);
     // Lê WASD e devolve o giro acumulado desde a última chamada (zerando-o)
     jogo::Comandos coletar();
-    // Joga fora o giro acumulado (usado enquanto o jogo está pausado)
-    void descartarGiro() { giroAcumulado_ = 0.0f; }
+    // Joga fora o giro e o E acumulados (usado enquanto o jogo está pausado)
+    void descartarGiro() {
+        giroAcumulado_ = 0.0f;
+        usarPendente_ = false;
+    }
+    // Tab alterna o automapa
+    bool mapaVisivel() const { return mapaVisivel_; }
 
     bool capturado() const { return capturado_; }
     bool pediuSair() const { return pediuSair_; }
@@ -28,6 +33,8 @@ private:
     float giroAcumulado_ = 0.0f;
     bool capturado_ = false;
     bool pediuSair_ = false;
+    bool usarPendente_ = false;  // E apertado desde o último coletar()
+    bool mapaVisivel_ = false;
 };
 
 }

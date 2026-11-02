@@ -27,7 +27,7 @@ MapaCarregado carregarDeTexto(const std::vector<std::string>& linhas) {
     const int largura = static_cast<int>(linhas[0].size());
     const int altura = static_cast<int>(linhas.size());
 
-    MapaCarregado mapa{Grade(largura, altura), {}};
+    MapaCarregado mapa{Grade(largura, altura), {}, {}, {}};
     int inicios = 0;
     for (int y = 0; y < altura; ++y) {
         if (static_cast<int>(linhas[y].size()) != largura)
@@ -40,6 +40,16 @@ MapaCarregado carregarDeTexto(const std::vector<std::string>& linhas) {
                     mapa.grade.definir(x, y, Celula::Chao);
                     mapa.inicio = {x + 0.5f, y + 0.5f};
                     ++inicios;
+                    break;
+                case 'C': mapa.grade.definir(x, y, Celula::Comporta); break;
+                case 'T': mapa.grade.definir(x, y, Celula::ComportaTrancada); break;
+                case 'E':
+                    mapa.grade.definir(x, y, Celula::Elevador);
+                    mapa.elevador = glm::ivec2(x, y);
+                    break;
+                case 'K':
+                    mapa.grade.definir(x, y, Celula::Chao);
+                    mapa.chave = glm::vec2(x + 0.5f, y + 0.5f);
                     break;
                 default:
                     throw std::invalid_argument(std::format("caractere desconhecido em ({}, {})", x, y));

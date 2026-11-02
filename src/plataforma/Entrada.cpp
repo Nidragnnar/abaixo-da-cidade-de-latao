@@ -16,6 +16,10 @@ void Entrada::processarEvento(const SDL_Event& e) {
             break;
         case SDL_KEYDOWN:
             if (e.key.keysym.sym == SDLK_ESCAPE && capturado_) capturar(false);
+            // E e Tab contam uma vez por aperto (segurar a tecla não repete)
+            if (e.key.repeat) break;
+            if (e.key.keysym.scancode == SDL_SCANCODE_E && capturado_) usarPendente_ = true;
+            if (e.key.keysym.scancode == SDL_SCANCODE_TAB) mapaVisivel_ = !mapaVisivel_;
             break;
         case SDL_WINDOWEVENT:
             if (e.window.event == SDL_WINDOWEVENT_FOCUS_LOST && capturado_) capturar(false);
@@ -35,7 +39,9 @@ jogo::Comandos Entrada::coletar() {
     if (teclas[SDL_SCANCODE_D]) c.lado += 1.0f;
     if (teclas[SDL_SCANCODE_A]) c.lado -= 1.0f;
     c.giro = giroAcumulado_;
+    c.usar = usarPendente_;
     giroAcumulado_ = 0.0f;
+    usarPendente_ = false;
     return c;
 }
 

@@ -19,13 +19,20 @@ endfunction()
 add_library(nucleo STATIC
     src/jogo/PassoFixo.cpp
     src/mundo/Grade.cpp
-    src/mundo/MapaFixo.cpp
+    src/mundo/Zona.cpp
+    src/mundo/Consultas.cpp
+    src/mundo/Gerador.cpp
     src/mundo/Colisao.cpp
     src/jogo/Jogador.cpp
+    src/jogo/Partida.cpp
     src/render/Camera.cpp
     src/render/GeometriaMasmorra.cpp
     src/render/Xadrez.cpp
     src/render/Letterbox.cpp
+    src/render/Comportas.cpp
+    src/render/Sprites.cpp
+    src/render/Zonas.cpp
+    src/render/Automapa.cpp
 )
 configurar_alvo(nucleo)
 target_include_directories(nucleo PUBLIC ${CMAKE_SOURCE_DIR}/src)
@@ -42,15 +49,28 @@ add_executable(Roguelike WIN32
     src/render/Texturas.cpp
     src/render/MalhaGPU.cpp
     src/render/TelaBaixa.cpp
+    src/render/Desenho2D.cpp
 )
 configurar_alvo(Roguelike)
 target_link_libraries(Roguelike PRIVATE nucleo SDL2::SDL2main SDL2::SDL2 glad stb opengl32)
 set_target_properties(Roguelike PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY $<TARGET_FILE_DIR:Roguelike>)
 
-# SDL2.dll e assets ao lado do exe
+# SDL2.dll ao lado do exe
 add_custom_command(TARGET Roguelike POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:SDL2::SDL2> $<TARGET_FILE_DIR:Roguelike>
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:Roguelike>/assets)
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:SDL2::SDL2> $<TARGET_FILE_DIR:Roguelike>)
+
+# Assets copiados um a um, sempre que mudam (não só quando o exe é religado)
+file(GLOB_RECURSE ARQUIVOS_ASSETS CONFIGURE_DEPENDS RELATIVE ${CMAKE_SOURCE_DIR}/assets ${CMAKE_SOURCE_DIR}/assets/*)
+set(COPIAS_ASSETS)
+foreach(arquivo IN LISTS ARQUIVOS_ASSETS)
+    set(destino ${CMAKE_BINARY_DIR}/$<CONFIG>/assets/${arquivo})
+    add_custom_command(OUTPUT ${destino}
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_SOURCE_DIR}/assets/${arquivo} ${destino}
+        DEPENDS ${CMAKE_SOURCE_DIR}/assets/${arquivo})
+    list(APPEND COPIAS_ASSETS ${destino})
+endforeach()
+add_custom_target(copiar_assets ALL DEPENDS ${COPIAS_ASSETS})
+add_dependencies(Roguelike copiar_assets)
 
 # Testes automáticos
 file(GLOB ARQUIVOS_TESTE CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/testes/*.cpp)

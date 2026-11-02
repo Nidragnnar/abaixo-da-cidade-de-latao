@@ -15,7 +15,8 @@ public:
     MalhaGPU(const MalhaGPU&) = delete;
     MalhaGPU& operator=(const MalhaGPU&) = delete;
 
-    void enviar(const std::vector<Vertice>& v);
+    // dinamica: dados trocados a cada quadro (comportas, sprites)
+    void enviar(const std::vector<Vertice>& v, bool dinamica = false);
     void desenhar() const;
 
 private:

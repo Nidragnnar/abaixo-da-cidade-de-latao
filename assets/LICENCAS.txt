@@ -12,10 +12,24 @@ doctest 2.4.11 ...... MIT (só nos testes, não vai no jogo) https://github.com/
 
 Arte e som
 ----------
-texturas/esgoto_parede.png  "Brick 5"  } Tiny Texture Pack 1 — Screaming Brain Studios — CC0
-texturas/esgoto_chao.png    "Tile 24"  } https://opengameart.org/content/tiny-texture-pack-1
-texturas/esgoto_teto.png    "Brick 1"  } Alteração: reduzidas de 128x128 para 64x64.
+Tiny Texture Pack 1 — Screaming Brain Studios — CC0 — https://opengameart.org/content/tiny-texture-pack-1
+  texturas/esgoto_parede.png  "Brick 5"
+  texturas/esgoto_chao.png    "Tile 24"
+  texturas/esgoto_teto.png    "Brick 1"
+  texturas/minas_parede.png   "Brick 25"
+  texturas/minas_teto.png     "Brick 23"
 
-Guardado para a zona da fábrica (ainda não usado):
 Zortch World Textures — mutantleg — CC0 — https://opengameart.org/content/zortch-world-textures
-(os pacotes originais ficam em arte_fonte/, fora do jogo distribuído)
+  texturas/fabrica_parede.png       tile07
+  texturas/fabrica_chao.png         tile107
+  texturas/fabrica_teto.png         tile33
+  texturas/minas_chao.png           tile05
+  texturas/comporta.png             bigdoor
+  texturas/comporta_trancada.png    bigdoor2
+
+Alteração em todas: reduzidas para 64x64 por ferramentas/preparar_texturas.ps1
+(os pacotes originais ficam em arte_fonte/, fora do jogo distribuído).
+
+PROVISÓRIOS, feitos para este jogo por ferramentas/gerar_sprites.ps1 (sem licença de terceiros):
+  sprites/valvula_chave.png   válvula de latão
+  sprites/elevador.png        gaiola do elevador de carga
