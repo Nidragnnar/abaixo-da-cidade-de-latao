@@ -49,6 +49,25 @@ PROVISÓRIOS, feitos para este jogo por ferramentas/gerar_itens.ps1 (sem licenç
   sprites/item_*.png                                     itens, munição e engrenagens (no chão e como ícone)
   armas/sabre_0..1, martelo_0..1, bacamarte_0..2, tesla_0..1.png   armas novas na mão
 
-PROVISÓRIOS, sintetizados para este jogo por ferramentas/gerar_sons.cpp (sem licença de terceiros):
-  sons/*.wav     efeitos (passos, golpes, disparos, recarga, dano, comporta, elevador, menu...)
-  sons/musica.wav   música ambiente industrial em loop (32 s)
+Sons e música (todos CC0; os pacotes originais ficam em arte_fonte/sons/, fora do jogo distribuído;
+escolhidos e preparados por ferramentas/preparar_sons.ps1)
+Impact Sounds 1.0 — Kenney — CC0 — https://kenney.nl/assets/impact-sounds
+  sons/passo_pedra.ogg  footstep_concrete_000     sons/passo_metal.ogg  impactPlate_light_000
+  sons/acerto.ogg       impactMetal_medium_000    sons/dano.ogg         impactPunch_heavy_000
+Sci-fi Sounds — Kenney — CC0 — https://kenney.nl/assets/sci-fi-sounds
+  sons/disparo_tesla.ogg  laserLarge_000          sons/inimigo_destruido.ogg  explosionCrunch_000
+  sons/comporta.ogg       doorOpen_000            sons/elevador.ogg           spaceEngineLow_000
+RPG Audio — Kenney — CC0 — https://kenney.nl/assets/rpg-audio
+  sons/arma_vazia.ogg  metalClick                 sons/pegar.ogg  handleCoins
+Interface Sounds — Kenney — CC0 — https://kenney.nl/assets/interface-sounds
+  sons/nivel.ogg  confirmation_002   sons/menu_mover.ogg  tick_002   sons/menu_confirmar.ogg  select_002
+Gunshot Sounds — Tabasco — CC0 — https://opengameart.org/content/gunshot-sounds
+  sons/disparo_revolver.wav  cz.wav (1º tiro)   sons/disparo_bacamarte.wav  shotty.wav   sons/tiro_inimigo.wav  mosin.wav (1º tiro)
+Gun Reload Sounds — SpringySpringo — CC0 — https://opengameart.org/content/gun-reload-sounds
+  sons/recarga.wav  gunreload1.wav
+Swishes Sound Pack — artisticdude — CC0 — https://opengameart.org/content/swishes-sound-pack
+  sons/golpe_ar.wav  swish-7.wav
+Factory Ambiance — yd — CC0 — https://opengameart.org/content/factory-ambiance
+  sons/musica.ogg  Factory.ogg
+Alteração nos .wav: trecho cortado, mixado em mono e volume normalizado por ferramentas/cortar_som.cpp.
+Os sons provisórios sintetizados (ferramentas/gerar_sons.cpp) não estão mais no jogo; a ferramenta só recria os que faltarem.

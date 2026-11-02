@@ -191,7 +191,15 @@ int main(int argc, char** argv) {
              });
          }},
     };
+    // Não sobrescreve sons já trocados por pacotes (ferramentas\preparar_sons.ps1); apague o arquivo para gerar de novo
+    const auto existe = [&](const std::string& nome) {
+        return std::filesystem::exists(pasta / (nome + ".wav")) || std::filesystem::exists(pasta / (nome + ".ogg"));
+    };
     for (const Efeito& e : efeitos) {
+        if (existe(e.nome)) {
+            std::printf("%s: já existe, mantido\n", e.nome);
+            continue;
+        }
         Amostras a = e.gerar();
         normalizar(a, 0.9f);
         gravarWav(pasta / (std::string(e.nome) + ".wav"), a);
@@ -199,7 +207,9 @@ int main(int argc, char** argv) {
     }
 
     // Música ambiente industrial de 32 s: frequências inteiras fecham ciclos exatos, então o loop não tem emenda
-    {
+    if (existe("musica")) {
+        std::printf("musica: já existe, mantida\n");
+    } else {
         PassaBaixa lpVapor;
         Amostras m = sintetizar(32.0f, [&](float t) {
             const float onda = 0.6f + 0.4f * std::sin(2 * PI * t / 16.0f);  // respira a cada 16 s

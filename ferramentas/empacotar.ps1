@@ -13,7 +13,7 @@ if (Test-Path pacote) { Remove-Item pacote -Recurse -Force }
 New-Item -ItemType Directory -Force $pasta | Out-Null
 Copy-Item build\Release\Roguelike.exe "$pasta\$nome.exe"
 Copy-Item build\Release\SDL2.dll, build\Release\SDL2_mixer.dll $pasta
-Copy-Item build\Release\assets $pasta -Recurse
+Copy-Item assets $pasta -Recurse  # da fonte: a pasta do build guarda arquivos que já saíram do jogo
 Copy-Item assets\LICENCAS.txt $pasta
 # O Bloco de Notas mostra os acentos com certeza quando o arquivo tem BOM
 $guia = Get-Content docs\COMO_JOGAR.txt -Raw -Encoding UTF8

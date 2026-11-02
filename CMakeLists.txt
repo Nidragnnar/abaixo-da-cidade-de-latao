@@ -107,3 +107,7 @@ add_test(NAME testes COMMAND testes_roguelike)
 # Sons e música provisórios (não faz parte do jogo): cmake --build --preset release --target gerar_sons
 add_executable(gerar_sons EXCLUDE_FROM_ALL ferramentas/gerar_sons.cpp)
 configurar_alvo(gerar_sons)
+
+# Corta e normaliza sons baixados de pacotes (não faz parte do jogo): ferramentas\preparar_sons.ps1
+add_executable(cortar_som EXCLUDE_FROM_ALL ferramentas/cortar_som.cpp)
+configurar_alvo(cortar_som)

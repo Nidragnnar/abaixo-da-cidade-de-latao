@@ -4,6 +4,7 @@
 #include <cmath>
 #include <filesystem>
 #include <string>
+#include <vector>
 
 #include <SDL.h>
 #include <SDL_mixer.h>
@@ -17,14 +18,32 @@ namespace {
 
 constexpr int CANAIS = 32;
 
-// .ogg tem preferência (pacote baixado); senão o .wav provisório; vazio se nenhum existe
-std::filesystem::path acharSom(std::string_view nome) {
+// Arquivos que existem para o som, na ordem de preferência: .ogg, depois .wav
+std::vector<std::filesystem::path> arquivosDoSom(std::string_view nome) {
+    std::vector<std::filesystem::path> achados;
     for (const char* extensao : {".ogg", ".wav"}) {
         const std::filesystem::path p = caminhoAsset("sons/" + std::string(nome) + extensao);
         std::error_code erro;
-        if (std::filesystem::exists(p, erro)) return p;
+        if (std::filesystem::exists(p, erro)) achados.push_back(p);
     }
-    return {};
+    return achados;
+}
+
+std::string utf8(const std::filesystem::path& p) {
+    const std::u8string s = p.u8string();
+    return {reinterpret_cast<const char*>(s.data()), s.size()};
+}
+
+// Tenta cada arquivo (um .ogg inválido cai para o .wav); nulo e log se nenhum carregar
+template <typename T, typename Carregar>
+T* carregarPrimeiro(std::string_view nome, std::string_view tipo, Carregar carregar) {
+    const auto arquivos = arquivosDoSom(nome);
+    if (arquivos.empty()) logar(std::string(tipo) + " ausente (fica em silêncio): sons/" + std::string(nome));
+    for (const std::filesystem::path& arquivo : arquivos) {
+        if (T* t = carregar(utf8(arquivo).c_str())) return t;
+        logar(std::string(tipo) + " inválido: " + utf8(arquivo.filename()) + ": " + Mix_GetError());
+    }
+    return nullptr;
 }
 
 // 0–10 → 0–128 (MIX_MAX_VOLUME)
@@ -63,15 +82,8 @@ Audio::~Audio() {
 void Audio::carregar() {
     if (!ativo_) return;
     for (int i = 0; i < static_cast<int>(jogo::Som::TOTAL); ++i) {
-        const std::string_view nome = jogo::nomeDoSom(static_cast<jogo::Som>(i));
-        const std::filesystem::path arquivo = acharSom(nome);
-        if (arquivo.empty()) {
-            logar("Som ausente (fica em silêncio): sons/" + std::string(nome));
-            continue;
-        }
-        Mix_Chunk* c = Mix_LoadWAV(reinterpret_cast<const char*>(arquivo.u8string().c_str()));
-        if (!c) logar("Som inválido (fica em silêncio): " + std::string(nome) + ": " + Mix_GetError());
-        efeitos_[static_cast<size_t>(i)] = c;
+        efeitos_[static_cast<size_t>(i)] = carregarPrimeiro<Mix_Chunk>(
+            jogo::nomeDoSom(static_cast<jogo::Som>(i)), "Som", [](const char* a) { return Mix_LoadWAV(a); });
     }
 }
 
@@ -88,18 +100,8 @@ void Audio::tocar(jogo::Som s, float volume, float pan) {
 
 void Audio::tocarMusica() {
     if (!ativo_) return;
-    if (!musica_) {
-        const std::filesystem::path arquivo = acharSom("musica");
-        if (arquivo.empty()) {
-            logar("Música ausente (fica em silêncio): sons/musica");
-            return;
-        }
-        musica_ = Mix_LoadMUS(reinterpret_cast<const char*>(arquivo.u8string().c_str()));
-        if (!musica_) {
-            logar(std::string("Música inválida (fica em silêncio): ") + Mix_GetError());
-            return;
-        }
-    }
+    if (!musica_) musica_ = carregarPrimeiro<Mix_Music>("musica", "Música", [](const char* a) { return Mix_LoadMUS(a); });
+    if (!musica_) return;
     if (!Mix_PlayingMusic()) Mix_PlayMusic(musica_, -1);
 }
 
