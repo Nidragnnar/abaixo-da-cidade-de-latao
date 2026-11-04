@@ -4,6 +4,7 @@
 #include <cmath>
 #include <format>
 
+#include "jogo/Armas.h"
 #include "render/Icones.h"
 #include "render/Texto.h"
 
@@ -83,7 +84,7 @@ std::string descricaoItem(const jogo::Item& i) {
         default: break;
     }
     const jogo::DadosArma& d = jogo::dadosArma(i.tipo);
-    const int bonus = jogo::somaBonus(i, jogo::TipoBonus::Dano);
+    const int bonus = jogo::bonusPorChumbo(d, jogo::somaBonus(i, jogo::TipoBonus::Dano));  // por chumbo no bacamarte
     const float intervalo = d.intervalo * (1.0f - jogo::somaBonus(i, jogo::TipoBonus::Velocidade) / 100.0f);
     std::string s = d.chumbos > 1 ? std::format("Dano {}–{} ×{}", d.danoMin + bonus, d.danoMax + bonus, d.chumbos)
                                   : std::format("Dano {}–{}", d.danoMin + bonus, d.danoMax + bonus);

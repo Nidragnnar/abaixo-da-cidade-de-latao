@@ -324,3 +324,22 @@ TEST_CASE("resultado do ataque informa golpe, arma vazia e recarga") {
     CHECK_FALSE(passo(armas, inv, a, v, rng, comando(false, false, true)).comecouRecarga);
     CHECK_FALSE(passo(armas, inv, a, v, rng, comando(false)).golpeou);
 }
+
+TEST_CASE("bacamarte: bônus de dano entra pela metade em cada chumbo (arredondando para cima)") {
+    CHECK(jogo::bonusPorChumbo(jogo::dadosArma(jogo::TipoItem::Bacamarte), 7) == 4);
+    CHECK(jogo::bonusPorChumbo(jogo::dadosArma(jogo::TipoItem::Bacamarte), 1) == 1);
+    CHECK(jogo::bonusPorChumbo(jogo::dadosArma(jogo::TipoItem::Bacamarte), 0) == 0);
+    CHECK(jogo::bonusPorChumbo(jogo::dadosArma(jogo::TipoItem::Revolver), 7) == 7);  // arma de um projétil: inteiro
+
+    // Colosso a 2 (defesa 2), bacamarte +4 no nível 1: cada chumbo faz 2–4 + 2 − 2 = 2–4
+    auto perto = mundo::andarDeTexto({"#######", "#@.c..#", "#######"}, 1);
+    auto v = jogo::inimigosDasMarcas(perto);
+    auto inv = inventarioCom(jogo::TipoItem::ChaveInglesa, jogo::TipoItem::Bacamarte);
+    inv.armaDeFogo().bonus = {{jogo::TipoBonus::Dano, 4}};
+    std::mt19937 rng(5);
+    auto a = deFogo();
+    passo(a, inv, perto, v, rng);
+    const int dano = 40 - v[0].vida;
+    CHECK(dano >= 7);
+    CHECK(dano <= 7 * 4);  // antes (+4 inteiro em cada chumbo) seriam 28–42
+}

@@ -40,7 +40,7 @@ void registrarAcerto(ResultadoAtaque& r, Inimigo& i, int dano) {
 }
 
 int sortearDano(const DadosArma& d, const Item& arma, const Atributos& atr, std::mt19937& rng) {
-    return mundo::sortear(rng, d.danoMin, d.danoMax) + atr.danoBase + somaBonus(arma, TipoBonus::Dano);
+    return mundo::sortear(rng, d.danoMin, d.danoMax) + bonusPorChumbo(d, atr.danoBase + somaBonus(arma, TipoBonus::Dano));
 }
 
 float comBonusPorcento(float base, const Item& arma, TipoBonus t) {
@@ -140,6 +140,8 @@ int maximoMunicao(TipoMunicao t) {
         default: return 48;
     }
 }
+
+int bonusPorChumbo(const DadosArma& d, int extra) { return d.chumbos > 1 ? (extra + 1) / 2 : extra; }
 
 ResultadoAtaque atualizarArmas(Armas& a, Inventario& inv, const Atributos& atr, const Comandos& c, glm::vec2 posicao,
                                float angulo, float inclinacao, const mundo::Grade& g, std::vector<Inimigo>& inimigos,

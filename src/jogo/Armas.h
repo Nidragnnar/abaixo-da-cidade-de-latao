@@ -46,6 +46,10 @@ struct ResultadoAtaque {
     std::string mensagem;
 };
 
+// Dano extra (nível + bônus da arma) em cada projétil: inteiro em arma de um projétil; no bacamarte, metade
+// em cada chumbo, arredondando para cima (+7 → +4), para ele não dobrar o revólver no fim do jogo
+int bonusPorChumbo(const DadosArma& d, int extra);
+
 // Troca, recarga e ataque da arma equipada ativa (seção 4 da spec), com dano base do nível e bônus do item;
 // a inclinação do olhar mira as armas de fogo na vertical
 ResultadoAtaque atualizarArmas(Armas& a, Inventario& inv, const Atributos& atr, const Comandos& c, glm::vec2 posicao,

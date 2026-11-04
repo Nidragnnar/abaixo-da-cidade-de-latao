@@ -153,3 +153,8 @@ TEST_CASE("mensagem da partida aparece acima do painel do inventário") {
         CHECK(com.texto[i].posicao.y + 8 <= l.painel.y);
     }
 }
+
+TEST_CASE("descrição do bacamarte mostra o bônus por chumbo") {
+    jogo::Item b{jogo::TipoItem::Bacamarte, jogo::Qualidade::Modificada, {{jogo::TipoBonus::Dano, 4}}};
+    CHECK(render::descricaoItem(b).starts_with("Dano 4–6 ×7"));  // 2–4 + metade de 4
+}
