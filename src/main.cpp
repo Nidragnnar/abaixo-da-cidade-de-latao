@@ -527,10 +527,13 @@ int main(int argc, char** argv) {
                 // Na captura o teclado é ignorado; na tela de fim, só depois de meio segundo
                 if (automatico || (telaAtual == ui::Tela::Fim && tempoMorto <= 0.5f)) em = {};
                 const int selecionadoAntes = menus.selecionado();
-                const bool confirmou = em.confirmar || (em.clique && em.itemSobMouse);
+                const std::vector<std::string> itensAntes = menus.itens(config);
                 const ui::Acao acao = menus.atualizar(em, config);
-                if (menus.tela() == telaAtual && menus.selecionado() != selecionadoAntes) tocar(jogo::Som::MenuMover);
-                if (confirmou || acao == ui::Acao::OpcoesMudaram) tocar(jogo::Som::MenuConfirmar);
+                const bool mudouDeTela = menus.tela() != telaAtual;
+                if (!mudouDeTela && menus.selecionado() != selecionadoAntes) tocar(jogo::Som::MenuMover);
+                // Confirmar só soa quando algo aconteceu (ação, outra tela ou o texto do item mudou, como no abandonar)
+                if (acao != ui::Acao::Nenhuma || mudouDeTela || (!mudouDeTela && menus.itens(config) != itensAntes))
+                    tocar(jogo::Som::MenuConfirmar);
                 switch (acao) {
                     case ui::Acao::NovoJogo:
                         novaPartida(config.semente.value_or(std::random_device{}()), 1);
@@ -618,12 +621,17 @@ int main(int argc, char** argv) {
                 if (cliques.soltou && arrastando) {
                     if (sobEspaco && *sob == *arrastando) partida->usarEspaco(*sob);
                     else if (sobEspaco) partida->trocarEspacos(*arrastando, *sob);
+                    else if (sob) {  // num espaço de equipamento: equipa se for o lugar dele
+                        const auto& item = partida->inventario().espaco(*arrastando);
+                        if (item && jogo::espacoDeEquipamento(item->tipo) == *sob - jogo::ESPACOS_INVENTARIO)
+                            partida->usarEspaco(*arrastando);
+                    }
                     else if (render::sobLargar(layout, mouse)) partida->largarEspaco(*arrastando);
                     arrastando.reset();
                 }
                 if (cliques.direito && sobEspaco) partida->largarEspaco(*sob);
                 const render::ElementosInventario telaInv =
-                    render::construirInventario(partida->inventario(), layout, sob, arrastando, mouse);
+                    render::construirInventario(partida->inventario(), layout, sob, arrastando, mouse, partida->mensagem());
                 desenho2D.desenhar(telaInv.cores, telaL, telaA);
                 desenhoTextura.desenhar(telaInv.icones, texturasSprites, telaL, telaA);
                 desenhoTextura.desenhar(telaInv.texto, fonte, telaL, telaA);

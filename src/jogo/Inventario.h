@@ -37,6 +37,9 @@ private:
     Item armaBranca_, armaDeFogo_, armadura_;
 };
 
+// Onde o item é equipado: 0 arma branca, 1 arma de fogo, 2 armadura; nada para consumíveis
+std::optional<int> espacoDeEquipamento(TipoItem t);
+
 struct Atributos {
     int danoBase;
     int defesa;

@@ -125,3 +125,12 @@ TEST_CASE("o que os inimigos soltam") {
         REQUIRE(balas);
     }
 }
+
+TEST_CASE("arma de impacto com mais dano é Pesada, não Afiada") {
+    jogo::Item m{jogo::TipoItem::Martelo, jogo::Qualidade::Modificada, {{jogo::TipoBonus::Dano, 2}}};
+    CHECK(jogo::nomeItem(m).find("Pesado +2") != std::string::npos);
+    jogo::Item c{jogo::TipoItem::ChaveInglesa, jogo::Qualidade::Modificada, {{jogo::TipoBonus::Dano, 1}}};
+    CHECK(jogo::nomeItem(c) == "Chave inglesa Pesada +1");
+    jogo::Item s{jogo::TipoItem::Sabre, jogo::Qualidade::Modificada, {{jogo::TipoBonus::Dano, 3}}};
+    CHECK(jogo::nomeItem(s) == "Sabre de oficial Afiado +3");
+}

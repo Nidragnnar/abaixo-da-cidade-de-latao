@@ -63,6 +63,15 @@ bool Inventario::consumirTonico(int i) {
     return true;
 }
 
+std::optional<int> espacoDeEquipamento(TipoItem t) {
+    switch (classe(t)) {
+        case ClasseItem::ArmaBranca: return 0;
+        case ClasseItem::ArmaDeFogo: return 1;
+        case ClasseItem::Armadura: return 2;
+        default: return std::nullopt;
+    }
+}
+
 Atributos calcularAtributos(const Inventario& inv, int nivel) {
     const Item& a = inv.armadura();
     return {nivel - 1, dadosArmadura(a.tipo).defesa + somaBonus(a, TipoBonus::Defesa),

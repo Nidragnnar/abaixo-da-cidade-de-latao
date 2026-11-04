@@ -97,3 +97,20 @@ TEST_CASE("placar vazio avisa") {
     CHECK(contemTexto(um.texto, "1. 1234"));
     CHECK(contemTexto(um.texto, "Destruído por um Colosso"));
 }
+
+TEST_CASE("placar: corte da causa não come o acento antes do ponto de corte") {
+    // "ã" seguido de letras: o corte tira caracteres inteiros, um por vez, e nunca deixa UTF-8 partido
+    // "1. 1  andar 1  nível 1  " tem 24 caracteres; cabem 56 (448 px), então sobram 29 da causa antes do "..."
+    std::vector<jogo::RegistroPlacar> r{{1, 1, 1, 0, 0, 1u, std::string(28, 'x') + "ãaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}};
+    const auto e = render::construirPlacar(r, 480, 270);
+    CHECK(contemTexto(e.texto, "..."));
+    CHECK(contemTexto(e.texto, "xã..."));  // o "ã" fica; sai só o que vem depois dele
+    // Sem glifo '?' (o que aparece quando o UTF-8 fica partido)
+    const auto interrogacao = render::construirTexto("?", {0, 0}, 1, glm::vec4(1));
+    for (size_t i = 0; i < e.texto.size(); i += 6) CHECK(e.texto[i].camada != interrogacao[0].camada);
+    // A linha é a mais longa que cabe: com mais um caractere passaria de 448 px
+    float direita = 0;
+    for (const auto& v : e.texto)
+        if (v.posicao.y > 40 && v.posicao.y < 60) direita = std::max(direita, v.posicao.x);
+    CHECK(direita > 448 - 16);
+}

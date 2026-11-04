@@ -2,6 +2,7 @@
 #include <array>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <glm/vec2.hpp>
@@ -37,8 +38,10 @@ struct ElementosInventario {
     std::vector<VerticeTex> icones;  // array de sprites; o item arrastado vem por último
 };
 
-// Painel, espaços com borda na cor da qualidade, ícones, nomes dos equipados, detalhes do item sob o mouse e ajuda
+// Painel, espaços com borda na cor da qualidade, ícones, nomes dos equipados, detalhes do item sob o mouse e ajuda;
+// a mensagem da partida ("Equipado: …", "Vida cheia") aparece acima do painel, já que o HUD fica escondido
 ElementosInventario construirInventario(const jogo::Inventario& inv, const LayoutInventario& l,
-                                        std::optional<int> sobMouse, std::optional<int> arrastando, glm::vec2 mouse);
+                                        std::optional<int> sobMouse, std::optional<int> arrastando, glm::vec2 mouse,
+                                        std::string_view mensagem = {});
 
 }

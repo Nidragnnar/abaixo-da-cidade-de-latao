@@ -140,3 +140,16 @@ TEST_CASE("detalhes de obra-prima com nome longo cabem embaixo no painel") {
         for (const auto& v : e.texto) REQUIRE(v.posicao.y <= baixo);
     }
 }
+
+TEST_CASE("mensagem da partida aparece acima do painel do inventário") {
+    auto l = render::layoutInventario(480, 270);
+    jogo::Inventario inv;
+    const auto sem = render::construirInventario(inv, l, std::nullopt, std::nullopt, {0, 0});
+    const auto com = render::construirInventario(inv, l, std::nullopt, std::nullopt, {0, 0}, "Vida cheia");
+    REQUIRE(com.texto.size() == sem.texto.size() + 6 * 10);  // "Vida cheia" tem 10 caracteres
+    for (size_t i = 0; i < com.texto.size(); i += 6) {
+        if (i < sem.texto.size() && com.texto[i].posicao == sem.texto[i].posicao) continue;
+        CHECK(com.texto[i].posicao.y >= 0);
+        CHECK(com.texto[i].posicao.y + 8 <= l.painel.y);
+    }
+}

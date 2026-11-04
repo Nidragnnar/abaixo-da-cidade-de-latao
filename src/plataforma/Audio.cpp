@@ -92,11 +92,13 @@ void Audio::tocar(jogo::Som s, float volume, float pan) {
     if (!ativo_ || s == jogo::Som::TOTAL || volume <= 0.0f) return;
     Mix_Chunk* c = efeitos_[static_cast<size_t>(s)];
     if (!c) return;
-    const int canal = Mix_PlayChannel(-1, c, 0);
+    // Volume e lado vão no canal antes de tocar (senão o começo sai com os do som anterior daquele canal)
+    const int canal = Mix_GroupAvailable(-1);
     if (canal < 0) return;  // todos os canais ocupados: este som se perde
     Mix_Volume(canal, volumeMixer(volume * volumeEfeitos_));
     const jogo::GanhosEstereo g = jogo::ganhosEstereo(pan);
     Mix_SetPanning(canal, g.esquerda, g.direita);
+    Mix_PlayChannel(canal, c, 0);
 }
 
 void Audio::tocarMusica() {

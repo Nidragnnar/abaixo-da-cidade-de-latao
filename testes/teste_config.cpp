@@ -125,3 +125,22 @@ TEST_CASE("sensibilidade em radianos por pixel") {
     CHECK(jogo::radianosPorPixel(1) == doctest::Approx(0.001024f));
     CHECK(jogo::radianosPorPixel(10) == doctest::Approx(0.0076294f).epsilon(0.001));
 }
+
+TEST_CASE("config: espaços em volta da chave e do valor são aceitos") {
+    PastaTemporaria pasta;
+    pasta.escrever("sensibilidade = 7\nsemente= 5 \n  tela_cheia =sim\n");
+    auto l = jogo::lerConfig(pasta.config());
+    CHECK_FALSE(l.estavaCorrompido);
+    CHECK(l.config.sensibilidade == 7);
+    CHECK(l.config.semente == 5u);
+    CHECK(l.config.telaCheia);
+}
+
+TEST_CASE("gravação que falha não deixa o .tmp para trás") {
+    PastaTemporaria pasta;
+    std::filesystem::create_directories(pasta.config());  // uma pasta no lugar do arquivo: a troca falha
+    CHECK_FALSE(jogo::gravarConfig(pasta.config(), jogo::Config{}));
+    std::filesystem::path tmp = pasta.config();
+    tmp += ".tmp";
+    CHECK_FALSE(std::filesystem::exists(tmp));
+}

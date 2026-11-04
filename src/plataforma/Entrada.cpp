@@ -18,6 +18,8 @@ void Entrada::abrirInventario(bool sim) {
     inventarioAberto_ = sim;
     cliques_ = {};
     capturar(!sim);  // aberto: mouse livre para clicar; fechado: volta ao jogo
+    // Fechar (I ou Esc) com o botão ainda apertado de um arraste não dispara a arma
+    if (!sim) ignorarBotao_ = (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_LMASK) != 0;
 }
 
 CliqueInventario Entrada::coletarCliques() {
@@ -84,6 +86,8 @@ void Entrada::processarEvento(const SDL_Event& e) {
         case SDL_QUIT: pediuSair_ = true; break;
         case SDL_MOUSEBUTTONDOWN:
             posicaoMouse_ = {static_cast<float>(e.button.x), static_cast<float>(e.button.y)};
+            // O clique que só devolveu o foco à janela (voltando do Alt-Tab) não escolhe nada no menu
+            if (modoMenu_ && e.button.timestamp - focoGanhoEm_ < CLIQUE_DO_FOCO_MS) break;
             if (modoMenu_) {
                 if (e.button.button == SDL_BUTTON_LEFT) menu_.clique = true;
                 if (e.button.button == SDL_BUTTON_RIGHT) menu_.cliqueDireito = true;
@@ -142,6 +146,7 @@ void Entrada::processarEvento(const SDL_Event& e) {
                 if (capturado_) capturar(false);
                 if (!modoMenu_) pausaPendente_ = true;
             }
+            if (e.window.event == SDL_WINDOWEVENT_FOCUS_GAINED) focoGanhoEm_ = e.window.timestamp;
             break;
         case SDL_MOUSEMOTION:
             if (capturado_) {

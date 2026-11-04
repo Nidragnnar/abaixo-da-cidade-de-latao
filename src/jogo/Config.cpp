@@ -30,7 +30,13 @@ bool lerFaixa(std::string_view texto, int minimo, int maximo, int& valor) {
 bool aplicarLinha(std::string_view linha, Config& c) {
     const size_t igual = linha.find('=');
     if (igual == std::string_view::npos) return false;
-    const std::string_view chave = linha.substr(0, igual), valor = linha.substr(igual + 1);
+    // Quem edita à mão costuma pôr espaços: "sensibilidade = 7"
+    const auto aparar = [](std::string_view s) {
+        while (!s.empty() && (s.front() == ' ' || s.front() == '\t')) s.remove_prefix(1);
+        while (!s.empty() && (s.back() == ' ' || s.back() == '\t')) s.remove_suffix(1);
+        return s;
+    };
+    const std::string_view chave = aparar(linha.substr(0, igual)), valor = aparar(linha.substr(igual + 1));
     if (chave == "sensibilidade") return lerFaixa(valor, SENSIBILIDADE_MIN, SENSIBILIDADE_MAX, c.sensibilidade);
     if (chave == "volume_efeitos") return lerFaixa(valor, 0, VOLUME_MAX, c.volumeEfeitos);
     if (chave == "volume_musica") return lerFaixa(valor, 0, VOLUME_MAX, c.volumeMusica);

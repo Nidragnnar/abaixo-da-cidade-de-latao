@@ -1,5 +1,6 @@
 #include "render/TelaInventario.h"
 
+#include <algorithm>
 #include <cmath>
 #include <format>
 
@@ -96,7 +97,8 @@ std::string descricaoItem(const jogo::Item& i) {
 }
 
 ElementosInventario construirInventario(const jogo::Inventario& inv, const LayoutInventario& l,
-                                        std::optional<int> sobMouse, std::optional<int> arrastando, glm::vec2 mouse) {
+                                        std::optional<int> sobMouse, std::optional<int> arrastando, glm::vec2 mouse,
+                                        std::string_view mensagem) {
     ElementosInventario e;
     const auto p = [](const Retangulo& r) { return glm::vec2(r.x, r.y); };
     const auto fim = [](const Retangulo& r) { return glm::vec2(r.x + r.largura, r.y + r.altura); };
@@ -173,6 +175,13 @@ ElementosInventario construirInventario(const jogo::Inventario& inv, const Layou
         texto(e.texto, dica, {static_cast<float>(l.largar.x), yDica}, COR_TEXTO);
         yDica += 10;
     }
+
+    // Mensagem da partida, centralizada acima do painel
+    if (!mensagem.empty())
+        texto(e.texto, mensagem,
+              {std::floor(l.painel.x + (l.painel.largura - larguraTexto(mensagem, 1)) / 2.0f),
+               static_cast<float>(std::max(0, l.painel.y - 11))},
+              COR_LATAO);
 
     // O item arrastado acompanha o mouse (por último)
     if (arrastando && *arrastando < jogo::ESPACOS_INVENTARIO && inv.espaco(*arrastando)) {

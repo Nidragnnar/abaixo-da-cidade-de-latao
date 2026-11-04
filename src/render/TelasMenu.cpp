@@ -33,10 +33,11 @@ void retangulo(std::vector<VerticeCor>& v, const Retangulo& r, glm::vec4 cor) {
 // Corta o fim (sem partir caractere UTF-8) até caber, com "..."
 std::string cortar(std::string s, float largura) {
     if (larguraTexto(s, 1) <= largura) return s;
+    const auto continuacao = [](char c) { return (static_cast<unsigned char>(c) & 0xC0) == 0x80; };
     while (!s.empty() && larguraTexto(s + "...", 1) > largura) {
-        s.pop_back();
-        while (!s.empty() && (static_cast<unsigned char>(s.back()) & 0xC0) == 0x80) s.pop_back();
-        if (!s.empty() && (static_cast<unsigned char>(s.back()) & 0xC0) == 0xC0) s.pop_back();  // início do caractere
+        // Tira um caractere inteiro: os bytes de continuação do fim e o byte que os começa
+        while (!s.empty() && continuacao(s.back())) s.pop_back();
+        if (!s.empty()) s.pop_back();
     }
     return s + "...";
 }

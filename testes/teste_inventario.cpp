@@ -66,3 +66,11 @@ TEST_CASE("atributos com nível e bônus") {
     CHECK(a.defesa == 3 + 2);
     CHECK(a.vidaMaxima == 30 + 16 + 7);
 }
+
+TEST_CASE("cada tipo de item tem o seu espaço de equipamento") {
+    CHECK(jogo::espacoDeEquipamento(jogo::TipoItem::Sabre) == 0);
+    CHECK(jogo::espacoDeEquipamento(jogo::TipoItem::ChaveInglesa) == 0);
+    CHECK(jogo::espacoDeEquipamento(jogo::TipoItem::Tesla) == 1);
+    CHECK(jogo::espacoDeEquipamento(jogo::TipoItem::Colete) == 2);
+    CHECK_FALSE(jogo::espacoDeEquipamento(jogo::TipoItem::Tonico).has_value());
+}

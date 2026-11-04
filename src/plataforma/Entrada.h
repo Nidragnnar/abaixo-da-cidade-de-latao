@@ -52,7 +52,10 @@ private:
     void capturar(bool sim);
     void teclaNoMenu(const SDL_KeyboardEvent& k);
 
+    static constexpr Uint32 CLIQUE_DO_FOCO_MS = 150;  // clique tão perto de ganhar o foco foi para ativar a janela
+
     SDL_Window* janela_;
+    Uint32 focoGanhoEm_ = 0;          // SDL_GetTicks de quando a janela ganhou o foco
     float sensibilidade_ = 0.0025f;   // radianos por pixel
     float giroAcumulado_ = 0.0f;
     float inclinarAcumulado_ = 0.0f;  // mouse vertical

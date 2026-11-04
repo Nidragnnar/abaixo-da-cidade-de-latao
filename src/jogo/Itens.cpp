@@ -75,11 +75,12 @@ int valorBonus(TipoBonus b, TipoItem t, int andar, std::mt19937& rng) {
     return 1;
 }
 
-const char* adjetivo(TipoBonus b, ClasseItem c, bool feminino) {
+const char* adjetivo(TipoBonus b, TipoItem t, bool feminino) {
     switch (b) {
         case TipoBonus::Dano:
-            if (c == ClasseItem::ArmaDeFogo) return feminino ? "Calibrada" : "Calibrado";
-            return feminino ? "Afiada" : "Afiado";
+            if (classe(t) == ClasseItem::ArmaDeFogo) return feminino ? "Calibrada" : "Calibrado";
+            if (t == TipoItem::Sabre) return feminino ? "Afiada" : "Afiado";
+            return feminino ? "Pesada" : "Pesado";  // chave inglesa e martelo não têm fio
         case TipoBonus::Defesa: return feminino ? "Reforçada" : "Reforçado";
         case TipoBonus::VidaMaxima: return "Vital";
         case TipoBonus::Velocidade: return "Veloz";
@@ -144,7 +145,7 @@ std::string nomeItem(const Item& i) {
     if (i.bonus.empty()) return nome;
     const Bonus& b = i.bonus.front();
     const bool porcento = b.tipo == TipoBonus::Velocidade || b.tipo == TipoBonus::Recarga;
-    return std::format("{} {} +{}{}", nome, adjetivo(b.tipo, c, feminino), b.valor, porcento ? "%" : "");
+    return std::format("{} {} +{}{}", nome, adjetivo(b.tipo, i.tipo, feminino), b.valor, porcento ? "%" : "");
 }
 
 Item gerarItem(int andar, std::mt19937& rng) {
