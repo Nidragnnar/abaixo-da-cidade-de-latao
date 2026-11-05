@@ -1,4 +1,5 @@
 #include "jogo/IA.h"
+#include "jogo/Chefes.h"
 
 #include <cmath>
 
@@ -30,6 +31,9 @@ float subidaDe(const Inimigo& i) { return i.corpo.noChao && i.corpo.velocidade <
 
 bool voa(const Inimigo& i) { return dados(i.tipo).voa; }
 
+// A Grande Máquina não anda nem é empurrada
+bool fixo(const Inimigo& i) { return dados(i.tipo).chefe && dados(i.tipo).velocidade == 0.0f; }
+
 // Altura que a colisão confere contra o teto: a do próprio corpo nos voadores, a do jogador nos outros
 float alturaColisao(const Inimigo& i) { return voa(i) ? dados(i.tipo).altura : mundo::ALTURA_CORPO; }
 
@@ -57,8 +61,8 @@ Vao vaoEmVolta(const mundo::Grade& g, glm::vec2 p, float alcance) {
 // sobe para dentro do teto (perto de uma pilha de caixas numa sala baixa, por exemplo) e a colisão segura o resto
 float alvoDeVoo(const Inimigo& i, const mundo::Grade& g, float pesJogador) {
     const float altura = dados(i.tipo).altura;
-    const Vao perto = vaoEmVolta(g, i.posicao, RAIO_INIMIGO + 0.35f);
-    const Vao corpo = vaoEmVolta(g, i.posicao, RAIO_INIMIGO);
+    const Vao perto = vaoEmVolta(g, i.posicao, raioDe(i) + 0.35f);
+    const Vao corpo = vaoEmVolta(g, i.posicao, raioDe(i));
     const float desejado = i.tipo == TipoInimigo::Vespa
                                ? pesJogador + (i.estado == EstadoInimigo::Preparando ? ALTURA_PEITO : ALTURA_VOO_VESPA)
                                : perto.teto - DESCIDA_DIRIGIVEL;
@@ -78,7 +82,7 @@ void voar(Inimigo& i, const MundoIA& m, float dt) {
 
 void mover(Inimigo& i, const mundo::Grade& g, glm::vec2 direcao, float dt) {
     if (glm::length(direcao) < 1e-5f) return;
-    i.posicao = mundo::moverComColisao(g, i.posicao, glm::normalize(direcao) * dados(i.tipo).velocidade * dt, RAIO_INIMIGO,
+    i.posicao = mundo::moverComColisao(g, i.posicao, glm::normalize(direcao) * dados(i.tipo).velocidade * dt, raioDe(i),
                                        i.corpo.pes, subidaDe(i), alturaColisao(i));
 }
 
@@ -142,7 +146,7 @@ void atualizarVespa(Inimigo& i, const MundoIA& m, EventosIA& e, bool ve, float d
             else aproximar(i, m, e, ve, dt);
             break;
         case EstadoInimigo::Preparando: {
-            if (glm::length(plano) > RAIO_INIMIGO + m.raioJogador) mover(i, m.grade, plano, dt);  // vem junto no mergulho
+            if (glm::length(plano) > raioDe(i) + m.raioJogador) mover(i, m.grade, plano, dt);  // vem junto no mergulho
             if (i.tempoNoEstado < d.preparo) break;
             const glm::vec3 centro{i.posicao.x, i.corpo.pes + d.altura / 2, i.posicao.y};
             const glm::vec3 alvo{m.jogador.x, m.pesJogador + CENTRO_JOGADOR, m.jogador.y};
@@ -194,28 +198,38 @@ void separar(std::vector<Inimigo>& v, const mundo::Grade& g, glm::vec2 jogador, 
             if (!mesmoNivel(v[a].corpo.pes, v[b].corpo.pes)) continue;  // um em cima da plataforma, outro embaixo
             glm::vec2 d = v[b].posicao - v[a].posicao;
             const float dist = glm::length(d);
-            if (dist >= 2 * RAIO_INIMIGO) continue;
+            if (dist >= raioDe(v[a]) + raioDe(v[b])) continue;
             d = dist > 1e-5f ? d / dist : glm::vec2(1.0f, 0.0f);
-            const glm::vec2 metade = d * (2 * RAIO_INIMIGO - dist) * 0.5f;
-            v[a].posicao = mundo::moverComColisao(g, v[a].posicao, -metade, RAIO_INIMIGO, v[a].corpo.pes, subidaDe(v[a]), alturaColisao(v[a]));
-            v[b].posicao = mundo::moverComColisao(g, v[b].posicao, metade, RAIO_INIMIGO, v[b].corpo.pes, subidaDe(v[b]), alturaColisao(v[b]));
+            const glm::vec2 metade = d * (raioDe(v[a]) + raioDe(v[b]) - dist) * 0.5f;
+            // Quem é fixo (a Grande Máquina) não se move: o outro sai inteiro
+            const float parteA = fixo(v[a]) ? 0.0f : fixo(v[b]) ? 2.0f : 1.0f, parteB = 2.0f - parteA;
+            if (parteA > 0) v[a].posicao = mundo::moverComColisao(g, v[a].posicao, -metade * parteA, raioDe(v[a]), v[a].corpo.pes, subidaDe(v[a]), alturaColisao(v[a]));
+            if (parteB > 0) v[b].posicao = mundo::moverComColisao(g, v[b].posicao, metade * parteB, raioDe(v[b]), v[b].corpo.pes, subidaDe(v[b]), alturaColisao(v[b]));
         }
-    const float minimo = RAIO_INIMIGO + raioJogador;
     for (Inimigo& i : v) {
-        if (i.estado == EstadoInimigo::Destruido || !mesmoNivel(i.corpo.pes, pesJogador)) continue;
+        if (i.estado == EstadoInimigo::Destruido || fixo(i) || !mesmoNivel(i.corpo.pes, pesJogador)) continue;
         glm::vec2 d = i.posicao - jogador;
         const float dist = glm::length(d);
+        const float minimo = raioDe(i) + raioJogador;
         if (dist >= minimo) continue;
         d = dist > 1e-5f ? d / dist : glm::vec2(1.0f, 0.0f);
-        i.posicao = mundo::moverComColisao(g, i.posicao, d * (minimo - dist), RAIO_INIMIGO, i.corpo.pes, subidaDe(i), alturaColisao(i));
+        i.posicao = mundo::moverComColisao(g, i.posicao, d * (minimo - dist), raioDe(i), i.corpo.pes, subidaDe(i), alturaColisao(i));
     }
 }
 
 }
 
+void aproximarDoJogador(Inimigo& i, const MundoIA& m, EventosIA& e, bool ve, float dt) { aproximar(i, m, e, ve, dt); }
+
+float moverInimigo(Inimigo& i, const mundo::Grade& g, glm::vec2 deslocamento) {
+    const glm::vec2 antes = i.posicao;
+    i.posicao = mundo::moverComColisao(g, i.posicao, deslocamento, raioDe(i), i.corpo.pes, subidaDe(i), alturaColisao(i));
+    return glm::distance(antes, i.posicao);
+}
+
 void acordarPorBarulho(std::vector<Inimigo>& v, glm::vec2 origem, float alcance) {
     for (Inimigo& i : v)
-        if (i.estado == EstadoInimigo::Parado && glm::distance(i.posicao, origem) <= alcance)
+        if (i.estado == EstadoInimigo::Parado && glm::distance(i.posicao, origem) <= alcance && !dados(i.tipo).chefe)
             mudar(i, EstadoInimigo::Perseguindo);
 }
 
@@ -224,13 +238,13 @@ EventosIA atualizarInimigos(std::vector<Inimigo>& v, const MundoIA& m, float dt)
     for (Inimigo& i : v) {
         i.tempoNoEstado += dt;
         if (i.estado == EstadoInimigo::Destruido) {
-            if (voa(i)) mundo::atualizarVertical(i.corpo, m.grade, i.posicao, RAIO_INIMIGO, dt, alturaColisao(i));  // destroços caem
+            if (voa(i)) mundo::atualizarVertical(i.corpo, m.grade, i.posicao, raioDe(i), dt, alturaColisao(i));  // destroços caem
             continue;
         }
         const DadosInimigo& d = dados(i.tipo);
 
         if (i.empurrao != glm::vec2(0.0f)) {
-            i.posicao = mundo::moverComColisao(m.grade, i.posicao, i.empurrao, RAIO_INIMIGO, i.corpo.pes, subidaDe(i), alturaColisao(i));
+            if (!fixo(i)) i.posicao = mundo::moverComColisao(m.grade, i.posicao, i.empurrao, raioDe(i), i.corpo.pes, subidaDe(i), alturaColisao(i));
             i.empurrao = glm::vec2(0.0f);
         }
 
@@ -242,6 +256,7 @@ EventosIA atualizarInimigos(std::vector<Inimigo>& v, const MundoIA& m, float dt)
 
         if (i.tipo == TipoInimigo::Vespa) atualizarVespa(i, m, e, ve, dt);
         else if (i.tipo == TipoInimigo::Dirigivel) atualizarDirigivel(i, m, e, ve, dt);
+        else if (d.chefe) atualizarChefe(i, m, e, ve, dt);
         else switch (i.estado) {
             case EstadoInimigo::Parado:
                 if (ve) mudar(i, EstadoInimigo::Perseguindo);
@@ -270,7 +285,7 @@ EventosIA atualizarInimigos(std::vector<Inimigo>& v, const MundoIA& m, float dt)
                 } else if (ve && dist > 1e-4f) {  // sem direção se estiver exatamente no jogador
                     // Sai da frente do atirador, na altura dos olhos, e voa reto para o meio do corpo do jogador
                     const glm::vec2 plano = glm::normalize(m.jogador - i.posicao);
-                    const glm::vec2 boca = i.posicao + plano * (RAIO_INIMIGO + 0.05f);
+                    const glm::vec2 boca = i.posicao + plano * (raioDe(i) + 0.05f);
                     const glm::vec3 origem{boca.x, i.corpo.pes + OLHOS_INIMIGO, boca.y};
                     const glm::vec3 alvo{m.jogador.x, m.pesJogador + CENTRO_JOGADOR, m.jogador.y};
                     e.tiros.push_back({origem, glm::normalize(alvo - origem) * VELOCIDADE_PROJETIL,
@@ -289,7 +304,7 @@ EventosIA atualizarInimigos(std::vector<Inimigo>& v, const MundoIA& m, float dt)
             i.alertou = true;
         }
         if (voa(i)) voar(i, m, dt);
-        else mundo::atualizarVertical(i.corpo, m.grade, i.posicao, RAIO_INIMIGO, dt);  // inimigos não levam dano de queda
+        else mundo::atualizarVertical(i.corpo, m.grade, i.posicao, raioDe(i), dt);  // inimigos não levam dano de queda
     }
     separar(v, m.grade, m.jogador, m.pesJogador, m.raioJogador);
     return e;

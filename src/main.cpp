@@ -74,6 +74,7 @@ struct Opcoes {
     std::string tela;                    // --tela principal|opcoes|placar|pausa: abre essa tela (capturas)
     // --inimigo <letra> <x> <z> (repetível): põe mais um inimigo no andar inicial (letras dos mapas de teste)
     std::vector<std::pair<char, glm::vec2>> inimigos;
+    std::optional<int> vidaChefe;        // --vida-chefe <n>: o chefe do andar inicial começa com essa vida (testes)
 
     // Começa direto na partida, sem o menu (cenários de teste e roteiros)
     bool direto() const {
@@ -103,6 +104,7 @@ Opcoes lerOpcoes(int argc, char** argv) {
         else if (arg == "--demo" && temValor) o.demo = static_cast<uint32_t>(std::stoul(argv[++i]));
         else if (arg == "--mudo") o.mudo = true;
         else if (arg == "--tela" && temValor) o.tela = argv[++i];
+        else if (arg == "--vida-chefe" && temValor) o.vidaChefe = std::stoi(argv[++i]);
         else if (arg == "--inimigo" && i + 3 < argc) {
             const char letra = argv[++i][0];
             const float x = std::stof(argv[++i]);
@@ -155,6 +157,11 @@ void descreverAndar(uint32_t semente, int numero) {
         plataforma::logar(std::format("  sala {}: ({}, {}) {}×{}, chão {} no centro", i, s.x, s.y, s.largura, s.altura,
                                       a.grade.chao(s.centro().x, s.centro().y)));
     }
+    if (a.arena) {
+        const mundo::Sala& s = a.salas[*a.arena];
+        for (const glm::ivec2 e : mundo::entradasDaSala(a.grade, s))
+            plataforma::logar(std::format("  arena: sala {}, entrada em ({}, {})", *a.arena, e.x, e.y));
+    }
     for (const jogo::Inimigo& i : jogo::gerarInimigos(a, semente))
         plataforma::logar(std::format("  {} em ({:.1f}, {:.1f})", jogo::dados(i.tipo).nome, i.posicao.x, i.posicao.y));
     for (const jogo::CoisaNoChao& c : jogo::gerarChao(a, semente)) {
@@ -201,7 +208,7 @@ std::vector<std::filesystem::path> arquivosDeSprites() {
     std::vector<std::filesystem::path> a{plataforma::caminhoAsset("sprites/valvula_chave.png"),
                                          plataforma::caminhoAsset("sprites/elevador.png"),
                                          plataforma::caminhoAsset("sprites/projetil.png")};
-    for (const char* inimigo : {"rato", "automato", "atirador", "colosso", "vespa", "dirigivel"})
+    for (const char* inimigo : {"rato", "automato", "atirador", "colosso", "vespa", "dirigivel", "rainha", "capataz", "maquina"})
         for (int q = 0; q < render::QUADROS_POR_INIMIGO; ++q)
             a.push_back(plataforma::caminhoAsset(std::format("sprites/{}_{}.png", inimigo, q)));
     // Itens, munição e engrenagens (render/Icones.h)
@@ -258,6 +265,12 @@ render::EstadoHud estadoHud(const jogo::Partida& p) {
     for (int k = 0; k < 4; ++k)
         if (const auto& item = inv.espaco(k))
             e.rapidos[static_cast<size_t>(k)] = {render::iconeDoItem(item->tipo), item->quantidade};
+    if (p.lutaComChefe())
+        if (const jogo::Inimigo* c = p.chefe()) {
+            e.nomeChefe = jogo::dados(c->tipo).nome;
+            e.vidaChefe = c->vida;
+            e.vidaMaximaChefe = c->vidaMaxima;
+        }
     return e;
 }
 
@@ -460,6 +473,7 @@ int main(int argc, char** argv) {
             partida->definirInclinacao(glm::radians(opcoes.inclinacaoGraus));
             if (opcoes.posicao) partida->definirPosicao(*opcoes.posicao);
             for (const auto& [letra, onde] : opcoes.inimigos) partida->acrescentarInimigo(jogo::tipoDaMarca(letra), onde);
+            if (opcoes.vidaChefe) partida->definirVidaDoChefe(*opcoes.vidaChefe);
             anterior = partida->jogador();
             menus.abrir(ui::Tela::Jogo);
             if (opcoes.inventario) entrada.abrirInventario(true);
@@ -531,15 +545,18 @@ int main(int argc, char** argv) {
                 anterior = partida->jogador();
             }
 
-            // Morte: grava o placar uma vez, solta o mouse e mostra a tela de fim
-            if (partida->morto() && !placarGravado) {
+            // Luta com chefe: música própria enquanto dura
+            if (audio) audio->tocarMusica(partida->lutaComChefe() ? "musica_chefe" : "musica");
+
+            // Fim (morte ou vitória): grava o placar uma vez, solta o mouse e mostra a tela de fim
+            if (partida->terminou() && !placarGravado) {
                 if (usaDadosDoJogador) posicaoPlacar = registrarNoPlacar(*partida);
                 placarGravado = true;
                 menus.abrir(ui::Tela::Fim);
                 entrada.modoMenu(true);
                 arrastando.reset();
             }
-            if (partida->morto()) tempoMorto += static_cast<float>(dt);
+            if (partida->terminou()) tempoMorto += static_cast<float>(dt);
 
             // Demo: chegou ao elevador ou desistiu
             bool fimDaDemo = false;
@@ -687,7 +704,7 @@ int main(int argc, char** argv) {
             const bool mostrarHud = !partidaDeFundo && (tela == ui::Tela::Jogo || tela == ui::Tela::Fim);
             if (mostrarHud && !entrada.inventarioAberto()) {  // o inventário e os menus cobrem o HUD
                 const render::ElementosHud hud = render::construirHud(estadoHud(*partida), telaL, telaA);
-                if (!partida->morto()) desenhoTextura.desenhar(hud.arma, texturasArmas, telaL, telaA);
+                if (!partida->terminou()) desenhoTextura.desenhar(hud.arma, texturasArmas, telaL, telaA);
                 desenho2D.desenhar(hud.cores, telaL, telaA);
                 desenhoTextura.desenhar(hud.icones, texturasSprites, telaL, telaA);
                 desenhoTextura.desenhar(hud.texto, fonte, telaL, telaA);
@@ -733,7 +750,8 @@ int main(int argc, char** argv) {
             if (tela == ui::Tela::Fim) {
                 const render::ElementosHud fim = render::construirTelaFim(
                     {partida->andar().numero, partida->nivel(), partida->inimigosDestruidos(), partida->engrenagens(),
-                     partida->pontuacao(), partida->semente(), partida->causaDaMorte(), posicaoPlacar},
+                     partida->pontuacao(), partida->semente(), partida->causaDaMorte(), posicaoPlacar,
+                     partida->venceu(), static_cast<int>(partida->tempoDeJogo())},
                     telaL, telaA);
                 desenho2D.desenhar(fim.cores, telaL, telaA);
                 desenhoTextura.desenhar(fim.texto, fonte, telaL, telaA);

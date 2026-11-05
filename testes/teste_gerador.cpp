@@ -121,7 +121,7 @@ uint64_t digitalDoLayout() {
     uint64_t h = 1469598103934665603ull;
     auto mistura = [&](uint64_t v) { h = (h ^ v) * 1099511628211ull; };
     for (uint32_t s = 1; s <= 10; ++s)
-        for (int n = 1; n <= 3; ++n) {
+        for (int n : {1, 3}) {  // o andar 2 é de chefe desde a Etapa 7 (elevador na arena)
             const auto a = mundo::gerarAndar(s, n);
             for (int y = 0; y < 64; ++y)
                 for (int x = 0; x < 64; ++x) mistura(a.grade.em(x, y) == mundo::Celula::Parede ? 1 : 2);
@@ -134,7 +134,7 @@ uint64_t digitalDoLayout() {
 }
 
 TEST_CASE("layout 2D igual ao da v1") {
-    CHECK(digitalDoLayout() == 14210815957670128114ull);  // valor da v1, gravado antes da Etapa 6A
+    CHECK(digitalDoLayout() == 4077953398768315790ull);  // andares 1 e 3 da v1, gravado antes da Etapa 7
 }
 
 namespace {

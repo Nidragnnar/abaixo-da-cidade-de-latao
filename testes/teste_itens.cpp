@@ -167,3 +167,13 @@ TEST_CASE("tudo no chão se alcança, nem que seja pulando") {
         }
     }
 }
+
+TEST_CASE("obra-prima sorteada nunca é tônico") {
+    std::mt19937 rng(5);
+    for (int k = 0; k < 300; ++k) {
+        const jogo::Item i = jogo::gerarObraPrima(4, rng);
+        REQUIRE(i.tipo != jogo::TipoItem::Tonico);
+        REQUIRE(i.qualidade == jogo::Qualidade::ObraPrima);
+        REQUIRE(i.bonus.size() == 2);
+    }
+}

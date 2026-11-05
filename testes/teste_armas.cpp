@@ -396,3 +396,29 @@ TEST_CASE("golpe não alcança quem está 1 bloco abaixo") {
     jogo::Armas branca2;
     CHECK(passoEm(branca2, inv, a, v2, rng, {1.7f, 1.5f}, 0.0f, 0.0f).acertos == 1);
 }
+
+TEST_CASE("tiro acerta o chefe pela borda do corpo") {
+    // Tiro reto passando 0,45 ao lado do centro: dentro do raio da Rainha (0,5), fora do rato (0,25)
+    for (char letra : {'R', 'r'}) {
+        auto a = mundo::andarDeTexto({"########", "#......#", std::string("#@...") + letra + ".#", "#......#", "########"}, 2);
+        auto v = jogo::inimigosDasMarcas(a);
+        jogo::Inventario inv;
+        auto armas = deFogo();
+        std::mt19937 rng(1);
+        const auto r = passoEm(armas, inv, a, v, rng, {1.5f, 2.95f}, 0.0f, 0.0f);
+        CHECK(r.acertos == (letra == 'R' ? 1 : 0));
+    }
+}
+
+TEST_CASE("golpe não interrompe o preparo do chefe (só empurra)") {
+    auto a = mundo::andarDeTexto({"#######", "#@P...#", "#######"}, 4);
+    auto v = jogo::inimigosDasMarcas(a);
+    v[0].posicao = {2.6f, 1.5f};
+    v[0].estado = jogo::EstadoInimigo::Preparando;
+    jogo::Inventario inv;
+    jogo::Armas armas;
+    std::mt19937 rng(1);
+    const auto r = passo(armas, inv, a, v, rng);
+    CHECK(r.acertos == 1);
+    CHECK(v[0].estado == jogo::EstadoInimigo::Preparando);
+}

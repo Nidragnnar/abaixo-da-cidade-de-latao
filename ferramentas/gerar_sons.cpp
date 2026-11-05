@@ -247,5 +247,30 @@ int main(int argc, char** argv) {
         gravarWav(pasta / "musica.wav", m);
         std::printf("musica.wav  %.2f s\n", static_cast<double>(m.size()) / TAXA);
     }
+    // Música de chefe de 32 s (Etapa 7): mais rápida e tensa; também fecha o loop sem emenda
+    if (existe("musica_chefe")) {
+        std::printf("musica_chefe: já existe, mantida\n");
+    } else {
+        PassaBaixa lpBaixo;
+        Amostras m = sintetizar(32.0f, [&](float t) {
+            // Baixo pulsando em colcheias, alternando a fundamental e a segunda menor (tensão)
+            const float colcheia = std::fmod(t, 0.25f);
+            const int compasso = static_cast<int>(t / 2.0f) % 4;
+            const float nota = compasso == 3 ? 58.27f : 55.0f;
+            float s = lpBaixo(2.0f * std::fmod(nota * t, 1.0f) - 1.0f, 0.12f) * decai(colcheia, 6) * 0.6f;
+            // Bumbo metálico a cada meio segundo e prato a cada 2 s
+            const float batida = std::fmod(t, 0.5f);
+            s += (seno(80 * (1.0f - batida), batida) + seno(320, batida) * 0.3f) * decai(batida, 14) * 0.5f;
+            const float prato = std::fmod(t, 2.0f);
+            s += ruido() * decai(prato, 9) * 0.12f;
+            // Sirene de vapor subindo nos últimos 2 s de cada 8
+            const float ciclo = std::fmod(t, 8.0f);
+            if (ciclo > 6.0f) s += seno(440 + 220 * (ciclo - 6.0f), t) * std::sin(PI * (ciclo - 6.0f) / 2.0f) * 0.15f;
+            return s;
+        });
+        normalizar(m, 0.7f);
+        gravarWav(pasta / "musica_chefe.wav", m);
+        std::printf("musica_chefe.wav  %.2f s\n", static_cast<double>(m.size()) / TAXA);
+    }
     return 0;
 }

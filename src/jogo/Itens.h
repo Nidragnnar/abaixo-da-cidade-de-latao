@@ -77,6 +77,9 @@ std::string nomeItem(const Item& i);
 // Item sorteado para o andar (pesos, disponibilidade, qualidade e bônus da Etapa 4)
 Item gerarItem(int andar, std::mt19937& rng);
 
+// Arma ou armadura obra-prima com bônus do andar (recompensa de chefe; nunca tônico)
+Item gerarObraPrima(int andar, std::mt19937& rng);
+
 int tamanhoCaixa(TipoMunicao t);  // balas 6, cartuchos 4, células 3
 
 struct MunicaoNoChao {

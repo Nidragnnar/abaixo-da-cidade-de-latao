@@ -118,3 +118,5 @@ TEST_CASE("corrompido informa se renomeou") {
     }
     CHECK(jogo::lerPlacar(pasta.caminho / "placar.txt").renomeado);
 }
+
+TEST_CASE("pontuação ganha 500 por chefe") { CHECK(jogo::calcularPontuacao(3, 12, 40, 2, 2) == 300 + 120 + 40 + 100 + 1000); }

@@ -31,6 +31,9 @@ constexpr float LARGURA_PEGAR = 0.4f;   // quanto o item pode estar fora da linh
 constexpr float DURACAO_CLARAO = 0.05f;  // o disparo ilumina a cena
 constexpr float DISTANCIA_PASSO = 1.7f;  // um som de passo a cada tanto andado
 constexpr float DURACAO_EXPLOSAO = 0.3f;  // quanto a explosão da bomba fica na tela
+constexpr float ESPERA_VITORIA = 3.0f;    // da queda da Grande Máquina até a tela de vitória
+constexpr int ENGRENAGENS_CHEFE = 30;
+constexpr const char* CAUSA_VITORIA = "Venceu a Grande Máquina";
 
 struct Explosao {
     glm::vec3 posicao;
@@ -61,6 +64,8 @@ public:
     void definirPosicao(glm::vec2 posicao) { jogador_.posicao = posicao; }
     // Opção --inimigo: põe mais um inimigo no andar atual, com os pés no chão da célula
     void acrescentarInimigo(TipoInimigo tipo, glm::vec2 posicao);
+    // Opção --vida-chefe: o chefe vivo do andar começa com essa vida (cenário da vitória)
+    void definirVidaDoChefe(int vida);
     // Opção --invencivel: o dano não reduz a vida (para observar a IA)
     void tornarInvencivel() { invencivel_ = true; }
     // Vazia quando não há mensagem
@@ -81,6 +86,13 @@ public:
     const std::vector<CoisaNoChao>& chao() const { return chao_; }
     const Armas& armas() const { return armas_; }
     bool morto() const { return morto_; }
+    // Chefe vivo do andar (nulo se não há ou já caiu); a luta vai da entrada na arena até ele cair
+    const Inimigo* chefe() const;
+    bool lutaComChefe() const { return lutando_; }
+    int chefesDerrotados() const { return chefesDerrotados_; }
+    bool venceu() const { return venceu_; }
+    bool terminou() const { return morto_ || venceu_; }  // tela de fim e placar
+    float tempoDeJogo() const { return tempoDeJogo_; }
     std::string_view causaDaMorte() const { return causa_; }
     int inimigosDestruidos() const { return destruidos_; }
     int nivel() const { return nivel_; }
@@ -102,6 +114,7 @@ public:
     void colocarNoChao(CoisaNoChao c) { chao_.push_back(std::move(c)); }
     void ganharXp(int quanto);
     void ferirParaTeste(int quanto) { vida_ -= quanto; }
+    void destruirChefeParaTeste();
 
 private:
     void usar();
@@ -119,6 +132,8 @@ private:
         return std::abs(mundo::alturaDoChao(andar_.grade, ponto) - jogador_.corpo.pes) < mundo::MESMO_NIVEL;
     }
     void abrirComporta(int x, int y);
+    void conferirArena();  // começa a luta quando o jogador entra todo na arena
+    void trancarArena(bool trancar);
     // Sem origem: no máximo um de cada por passo; com origem: todos
     void tocar(Som s, std::optional<glm::vec2> origem = std::nullopt);
     int indice(int x, int y) const { return y * andar_.grade.largura() + x; }
@@ -155,6 +170,13 @@ private:
     float tempoDesdeDano_ = 1e9f;
     std::vector<EventoSom> sons_;
     float andadoDesdePasso_ = 0.0f;
+    // Etapa 7: arena, chefes e vitória
+    std::vector<glm::ivec2> comportasArena_;  // entradas da arena trancadas durante a luta
+    bool lutando_ = false;
+    int chefesDerrotados_ = 0;
+    std::optional<float> desdeQuedaFinal_;  // contando desde a queda da Grande Máquina
+    bool venceu_ = false;
+    float tempoDeJogo_ = 0.0f;
 };
 
 }

@@ -37,6 +37,24 @@ struct MundoIA {
     const std::vector<int>* campoSaltador = nullptr;  // campo dos ratos (sobem 1 bloco); sem ele, usam `campo`
     float pesJogador = 0.0f;
     const std::vector<int>* campoVoador = nullptr;  // distanciasComAltura(..., VOADOR); sem ele, usam `campo`
+    // Chefes: limites das invocações e onde elas podem nascer
+    int ratosVivos = 0, voadoresVivos = 0;
+    std::optional<mundo::Sala> arena;
+    bool lutaComChefe = false;  // o chefe só acorda quando a arena tranca
+};
+
+// Inimigo chamado por um chefe (a Partida o acrescenta ao andar)
+struct Invocacao {
+    TipoInimigo tipo;
+    glm::vec2 posicao;
+};
+
+// Onda pelo chão (pancada do Capataz): fere quem estiver no chão dentro do raio
+struct Onda {
+    glm::vec2 centro;
+    float raio;
+    int dano;
+    TipoInimigo autor;
 };
 
 // Voador que acabou de perceber o jogador (zumbido da vespa, motor do dirigível)
@@ -47,6 +65,8 @@ struct Alerta {
 
 struct EventosIA {
     std::vector<Alerta> alertas;
+    std::vector<Invocacao> invocacoes;
+    std::vector<Onda> ondas;
     std::vector<Golpe> golpes;  // um por acerto, na ordem (a defesa vale para cada um)
     std::vector<glm::ivec2> comportasParaAbrir;
     std::vector<Projetil> tiros;
@@ -56,5 +76,10 @@ struct EventosIA {
 void acordarPorBarulho(std::vector<Inimigo>& v, glm::vec2 origem, float alcance);
 
 EventosIA atualizarInimigos(std::vector<Inimigo>& v, const MundoIA& m, float dt);
+
+// Para os chefes (jogo/Chefes.cpp): andar até o jogador como os de chão, e mover com colisão numa direção
+void aproximarDoJogador(Inimigo& i, const MundoIA& m, EventosIA& e, bool ve, float dt);
+// Devolve quanto andou de fato (menos que o pedido: bateu em algo)
+float moverInimigo(Inimigo& i, const mundo::Grade& g, glm::vec2 deslocamento);
 
 }

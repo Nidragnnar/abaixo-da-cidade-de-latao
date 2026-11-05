@@ -99,7 +99,7 @@ TEST_CASE("ícones dos itens depois dos inimigos") {
     CHECK(render::iconeDaMunicao(jogo::TipoMunicao::Balas) == render::PRIMEIRO_ITEM + 10);
     CHECK(render::ICONE_ENGRENAGENS == render::PRIMEIRO_ITEM + 13);
     CHECK(render::TOTAL_SPRITES == render::PRIMEIRO_ITEM + 14 + 4);  // + lampião, lustre, bomba e explosão
-    CHECK(render::PRIMEIRO_ITEM == render::PRIMEIRO_INIMIGO + 6 * render::QUADROS_POR_INIMIGO);  // 6 inimigos
+    CHECK(render::PRIMEIRO_ITEM == render::PRIMEIRO_INIMIGO + 9 * render::QUADROS_POR_INIMIGO);  // 6 inimigos e 3 chefes
 }
 
 TEST_CASE("tela de fim só fala do placar se entrou nele") {
@@ -118,4 +118,57 @@ TEST_CASE("tela de fim mostra como continuar") {
     const size_t inicio = h.texto.size() - esperado.size();
     for (size_t k = 0; k < esperado.size(); ++k) REQUIRE(h.texto[inicio + k].camada == esperado[k].camada);
     CHECK(render::larguraTexto(rodape, 1) <= 480);
+}
+
+namespace {
+// O texto `s` aparece em sequência nos glifos de h
+bool temTexto(const render::ElementosHud& h, const std::string& s) {
+    const auto procurado = render::construirTexto(s, {0, 0}, 1, glm::vec4(1));
+    if (procurado.empty() || h.texto.size() < procurado.size()) return false;
+    for (size_t i = 0; i + procurado.size() <= h.texto.size(); ++i) {
+        bool igual = true;
+        for (size_t k = 0; k < procurado.size() && igual; ++k) igual = h.texto[i + k].camada == procurado[k].camada;
+        if (igual) return true;
+    }
+    return false;
+}
+}
+
+TEST_CASE("barra do chefe só durante a luta") {
+    render::EstadoHud e;
+    const auto sem = render::construirHud(e, 480, 270);
+    CHECK_FALSE(temTexto(sem, "Rainha dos Ratos"));
+    e.nomeChefe = "Rainha dos Ratos";
+    e.vidaChefe = 70;
+    e.vidaMaximaChefe = 140;
+    const auto com = render::construirHud(e, 480, 270);
+    CHECK(temTexto(com, "Rainha dos Ratos"));
+    CHECK(com.cores.size() > sem.cores.size());
+}
+
+TEST_CASE("barra do chefe proporcional à vida") {
+    render::EstadoHud e;
+    e.nomeChefe = "Capataz a Vapor";
+    e.vidaMaximaChefe = 240;
+    auto direita = [&](int vida) {
+        e.vidaChefe = vida;
+        const auto h = render::construirHud(e, 480, 270);
+        float maior = 0;
+        for (const auto& v : h.cores)
+            if (v.cor.r > 0.6f && v.cor.g < 0.3f && v.posicao.y < 40) maior = std::max(maior, v.posicao.x);  // vermelho, no alto
+        return maior;
+    };
+    const float cheia = direita(240), metade = direita(120);
+    CHECK(cheia > metade);
+    CHECK(metade > 0);
+}
+
+TEST_CASE("tela de vitória diz Vitória! e o tempo m:ss") {
+    render::DadosFim d{6, 9, 80, 300, 4000, 42u, "Venceu a Grande Máquina", 0};
+    d.vitoria = true;
+    d.segundos = 185;
+    const auto h = render::construirTelaFim(d, 480, 270);
+    CHECK(temTexto(h, "Vitória!"));
+    CHECK(temTexto(h, "Tempo 3:05"));
+    CHECK_FALSE(temTexto(h, "Você morreu"));
 }

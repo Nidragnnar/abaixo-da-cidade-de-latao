@@ -59,6 +59,9 @@ PROVISÓRIOS, feitos para este jogo por ferramentas/gerar_voadores.ps1 (sem lice
   sprites/vespa_0..6.png, dirigivel_0..6.png   vespa a corda e dirigível a vapor
   sprites/bomba.png, explosao.png              bomba do dirigível e explosão
 
+PROVISÓRIOS, feitos para este jogo por ferramentas/gerar_chefes.ps1 (sem licença de terceiros):
+  sprites/rainha_0..6.png, capataz_0..6.png, maquina_0..6.png   os três chefes
+
 Sons e música (todos CC0; os pacotes originais ficam em arte_fonte/sons/, fora do jogo distribuído;
 escolhidos e preparados por ferramentas/preparar_sons.ps1)
 Impact Sounds 1.0 — Kenney — CC0 — https://kenney.nl/assets/impact-sounds
@@ -83,3 +86,4 @@ Alteração nos efeitos: trecho cortado, mixado em mono, volume ajustado e fim s
 Feito para este jogo por ferramentas/gerar_sons.cpp (sem licença de terceiros; escolhido de ouvido):
   sons/disparo_revolver.wav  disparo sintetizado
   sons/zumbido.wav  vespa   sons/motor.wav  dirigível   sons/explosao.wav  bomba (provisórios)
+  sons/musica_chefe.wav  música da arena dos chefes (provisória)

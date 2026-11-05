@@ -6,8 +6,8 @@
 
 namespace jogo {
 
-// 100 × andar + 10 × inimigos destruídos + engrenagens + 50 × nível (seção 7 da spec)
-int calcularPontuacao(int andar, int inimigos, int engrenagens, int nivel);
+// 100 × andar + 10 × inimigos destruídos + engrenagens + 50 × nível (seção 7 da spec) + 500 por chefe (Etapa 7)
+int calcularPontuacao(int andar, int inimigos, int engrenagens, int nivel, int chefes = 0);
 
 struct RegistroPlacar {
     int pontuacao;

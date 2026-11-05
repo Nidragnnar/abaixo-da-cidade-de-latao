@@ -24,6 +24,8 @@ constexpr float DISTANCIA_QUEDA_CHUMBO = 4.0f;  // bacamarte: dano pela metade d
 
 // Aplica o dano já descontada a defesa do tipo; devolve se destruiu
 bool ferir(Inimigo& i, int dano) {
+    // Chefe antes da luta (arena aberta): não leva dano nem acorda; a luta começa quando a arena tranca
+    if (dados(i.tipo).chefe && i.estado == EstadoInimigo::Parado) return false;
     i.vida -= std::max(1, dano - dados(i.tipo).defesa);
     if (i.estado == EstadoInimigo::Parado) i.estado = EstadoInimigo::Perseguindo;
     if (i.vida > 0) return false;
@@ -57,12 +59,12 @@ void golpear(ResultadoAtaque& r, const Item& arma, const Atributos& atr, glm::ve
         if (std::abs(i.corpo.pes - pes) >= mundo::MESMO_NIVEL) continue;  // um em cima da plataforma, outro embaixo
         const glm::vec2 ate = i.posicao - p;
         const float dist = glm::length(ate);
-        if (dist - RAIO_INIMIGO > d.alcance) continue;
+        if (dist - raioDe(i) > d.alcance) continue;
         if (dist > 1e-4f && glm::dot(ate / dist, frente) < cosArco) continue;
         if (!mundo::temLinhaDeVisao(g, p, i.posicao)) continue;
-        // O golpe empurra e interrompe o preparo do ataque
+        // O golpe empurra e interrompe o preparo do ataque (o do chefe, não: senão golpes seguidos o travam)
         i.empurrao = (dist > 1e-4f ? ate / dist : frente) * d.empurrao;
-        if (i.estado == EstadoInimigo::Preparando) {
+        if (i.estado == EstadoInimigo::Preparando && !dados(i.tipo).chefe) {
             i.estado = EstadoInimigo::Perseguindo;
             i.tempoNoEstado = 0;
         }
@@ -90,7 +92,7 @@ Inimigo* tracar(glm::vec2 p, float olhos, glm::vec2 d, float inclinacao, float a
         // Interseção raio × círculo
         const glm::vec2 oc = p - i.posicao;
         const float b = glm::dot(oc, d);
-        const float c = glm::dot(oc, oc) - RAIO_INIMIGO * RAIO_INIMIGO;
+        const float c = glm::dot(oc, oc) - raioDe(i) * raioDe(i);
         const float delta = b * b - c;
         if (delta < 0) continue;
         float t = -b - std::sqrt(delta);

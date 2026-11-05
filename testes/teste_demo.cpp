@@ -42,7 +42,7 @@ TEST_CASE("piloto chega ao elevador em 50 sementes") {
 TEST_CASE("piloto pega a válvula antes de descer num andar trancado") {
     int testados = 0;
     for (uint32_t s = 1; s <= 200 && testados < 3; ++s) {
-        jogo::Partida p(s, 2);  // tranca só a partir do andar 2
+        jogo::Partida p(s, 3);  // tranca só a partir do andar 2; o 2 é de chefe (o piloto não luta com chefe)
         if (!p.andar().chave) continue;
         ++testados;
         p.tornarInvencivel();
@@ -60,7 +60,7 @@ TEST_CASE("piloto chega ao elevador a pé, sem pular, nos andares com desnível"
 #else
     const uint32_t sementes = 4;
 #endif
-    for (int andar : {2, 3, 5})
+    for (int andar : {3, 5})  // 2, 4 e 6 são de chefe: o elevador só abre depois da luta
         for (uint32_t s = 1; s <= sementes; ++s) {
             jogo::Partida p(s, andar);
             p.tornarInvencivel();

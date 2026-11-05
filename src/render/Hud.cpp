@@ -24,6 +24,8 @@ constexpr float DURACAO_BALANCO = 0.3f, BALANCO_MAXIMO = 6.0f;
 constexpr float TAMANHO_MIRA = 3.5f;  // meio comprimento de cada traço
 constexpr glm::vec4 COR_MIRA{0.95f, 0.75f, 0.35f, 0.8f};
 constexpr float LADO_RAPIDO = 20.0f, ICONE_RAPIDO = 16.0f, PASSO_RAPIDO = 22.0f;
+constexpr float LARGURA_BARRA_CHEFE = 200.0f, ALTURA_BARRA_CHEFE = 6.0f;
+constexpr glm::vec4 COR_VIDA_CHEFE{0.75f, 0.15f, 0.10f, 1.0f};
 
 void texto(std::vector<VerticeTex>& v, std::string_view s, glm::vec2 p, float escala, glm::vec4 cor) {
     auto t = construirTexto(s, p, escala, cor);
@@ -105,7 +107,18 @@ ElementosHud construirHud(const EstadoHud& e, int telaL, int telaA) {
     texto(h.texto, std::format("Andar {}", e.andar), {MARGEM, MARGEM}, 1, COR_TEXTO);
     const std::string engrenagens = std::format("Engrenagens {}", e.engrenagens);
     texto(h.texto, engrenagens, {L - MARGEM - larguraTexto(engrenagens, 1), MARGEM}, 1, COR_LATAO);
-    if (!e.mensagem.empty()) textoCentralizado(h.texto, e.mensagem, 24, telaL, 1, COR_TEXTO);
+    // Chefe: nome no alto e barra larga logo abaixo (a mensagem desce para não cobrir)
+    float yMensagem = 24;
+    if (!e.nomeChefe.empty()) {
+        textoCentralizado(h.texto, e.nomeChefe, MARGEM, telaL, 1, COR_TEXTO);
+        const glm::vec2 b{std::floor((L - LARGURA_BARRA_CHEFE) / 2), MARGEM + 12};
+        const float fracao = e.vidaMaximaChefe > 0 ? std::clamp(static_cast<float>(e.vidaChefe) / e.vidaMaximaChefe, 0.0f, 1.0f) : 0.0f;
+        adicionarRetangulo(h.cores, b - 2.0f, b + glm::vec2(LARGURA_BARRA_CHEFE, ALTURA_BARRA_CHEFE) + 2.0f, COR_LATAO_ESCURO);
+        adicionarRetangulo(h.cores, b, b + glm::vec2(LARGURA_BARRA_CHEFE, ALTURA_BARRA_CHEFE), COR_FUNDO_BARRA);
+        adicionarRetangulo(h.cores, b, b + glm::vec2(LARGURA_BARRA_CHEFE * fracao, ALTURA_BARRA_CHEFE), COR_VIDA_CHEFE);
+        yMensagem = MARGEM + 12 + ALTURA_BARRA_CHEFE + 8;
+    }
+    if (!e.mensagem.empty()) textoCentralizado(h.texto, e.mensagem, yMensagem, telaL, 1, COR_TEXTO);
 
     // Arma na mão, balançando logo depois de levar dano
     const int quadro = quadroArma(e.arma, e.animacao > 0, e.armaDeFogoAtiva && e.recarregando);
@@ -124,9 +137,14 @@ ElementosHud construirTelaFim(const DadosFim& d, int telaL, int telaA) {
     ElementosHud h;
     adicionarRetangulo(h.cores, {0, 0}, {static_cast<float>(telaL), static_cast<float>(telaA)}, {0, 0, 0, 0.8f});
     float y = 60;
-    textoCentralizado(h.texto, "Você morreu", y, telaL, 2, {0.9f, 0.25f, 0.2f, 1.0f});
+    if (d.vitoria) textoCentralizado(h.texto, "Vitória!", y, telaL, 2, COR_LATAO);
+    else textoCentralizado(h.texto, "Você morreu", y, telaL, 2, {0.9f, 0.25f, 0.2f, 1.0f});
     y += 32;
     textoCentralizado(h.texto, d.causa, y, telaL, 1, COR_TEXTO);
+    if (d.vitoria) {
+        y += 14;
+        textoCentralizado(h.texto, std::format("Tempo {}:{:02}", d.segundos / 60, d.segundos % 60), y, telaL, 1, COR_TEXTO);
+    }
     y += 24;
     textoCentralizado(h.texto, std::format("Andar {}   Nível {}   Inimigos {}", d.andar, d.nivel, d.inimigos), y, telaL,
                       1, COR_TEXTO);

@@ -7,6 +7,7 @@
 
 #include <glm/geometric.hpp>
 
+#include "jogo/Chefes.h"
 #include "jogo/IA.h"
 #include "jogo/Placar.h"
 #include "mundo/Colisao.h"
@@ -46,7 +47,68 @@ float Partida::aberturaComporta(int x, int y) const {
     return it == abrindo_.end() ? 0.0f : it->second;
 }
 
-int Partida::pontuacao() const { return calcularPontuacao(andar_.numero, destruidos_, engrenagens_, nivel_); }
+int Partida::pontuacao() const {
+    return calcularPontuacao(andar_.numero, destruidos_, engrenagens_, nivel_, chefesDerrotados_);
+}
+
+const Inimigo* Partida::chefe() const {
+    for (const Inimigo& i : inimigos_)
+        if (dados(i.tipo).chefe && i.estado != EstadoInimigo::Destruido) return &i;
+    return nullptr;
+}
+
+void Partida::definirVidaDoChefe(int vida) {
+    for (Inimigo& i : inimigos_)
+        if (dados(i.tipo).chefe && i.estado != EstadoInimigo::Destruido) i.vida = std::clamp(vida, 1, i.vidaMaxima);
+}
+
+void Partida::destruirChefeParaTeste() {
+    for (Inimigo& i : inimigos_)
+        if (dados(i.tipo).chefe && i.estado != EstadoInimigo::Destruido) {
+            i.vida = 0;
+            i.estado = EstadoInimigo::Destruido;
+            i.tempoNoEstado = 0;
+        }
+}
+
+// Tranca toda abertura no anel de parede da arena (entradas, corredores colados nela, aberturas largas; o que não era
+// comporta ganha uma) ou as devolve como comportas comuns fechadas
+void Partida::trancarArena(bool trancar) {
+    if (trancar) {
+        const mundo::Sala& s = andar_.salas[*andar_.arena];
+        comportasArena_.clear();
+        for (int y = s.y - 1; y <= s.y + s.altura; ++y)
+            for (int x = s.x - 1; x <= s.x + s.largura; ++x) {
+                const bool anel = x == s.x - 1 || x == s.x + s.largura || y == s.y - 1 || y == s.y + s.altura;
+                const mundo::Celula c = andar_.grade.em(x, y);
+                if (anel && c != mundo::Celula::Parede && c != mundo::Celula::Elevador) comportasArena_.push_back({x, y});
+            }
+    }
+    for (const glm::ivec2 c : comportasArena_) {
+        abrindo_.erase(indice(c.x, c.y));
+        andar_.grade.definir(c.x, c.y, trancar ? mundo::Celula::ComportaTrancada : mundo::Celula::Comporta);
+    }
+    if (!trancar) comportasArena_.clear();
+    lutando_ = trancar;
+}
+
+void Partida::conferirArena() {
+    if (lutando_ || !andar_.arena || *andar_.arena >= andar_.salas.size()) return;
+    const Inimigo* c = chefe();
+    if (!c) return;
+    // O corpo inteiro dentro da sala: trancar não prende o jogador na comporta
+    const mundo::Sala& s = andar_.salas[*andar_.arena];
+    const glm::vec2 p = jogador_.posicao;
+    const float r = RAIO_JOGADOR + 0.01f;
+    if (p.x - r < s.x || p.y - r < s.y || p.x + r > s.x + s.largura || p.y + r > s.y + s.altura) return;
+    trancarArena(true);
+    for (Inimigo& i : inimigos_)
+        if (&i == c && i.estado == EstadoInimigo::Parado) {
+            i.estado = EstadoInimigo::Perseguindo;
+            i.tempoNoEstado = 0;
+        }
+    avisar(std::format("{}!", dados(c->tipo).nome));
+}
 
 void Partida::avisar(std::string texto) {
     mensagem_ = std::move(texto);
@@ -182,6 +244,15 @@ void Partida::recompensarDestruidos() {
         tocar(Som::InimigoDestruido);
         for (auto& c : soltarDoInimigo(i.tipo, i.posicao, andar_.numero, rng_)) chao_.push_back(std::move(c));
         ganharXp(dados(i.tipo).xp);
+        if (dados(i.tipo).chefe) {
+            // Chefe: obra-prima e engrenagens a mais; a arena destranca e a Grande Máquina começa a contar a vitória
+            ++chefesDerrotados_;
+            chao_.push_back({i.posicao + glm::vec2(0.3f, 0.0f), gerarObraPrima(andar_.numero, rng_)});
+            chao_.push_back({i.posicao - glm::vec2(0.3f, 0.0f), ENGRENAGENS_CHEFE});
+            if (lutando_) trancarArena(false);
+            if (i.tipo == TipoInimigo::GrandeMaquina) desdeQuedaFinal_ = 0.0f;
+            avisar(std::format("{} derrotad{}!", dados(i.tipo).nome, i.tipo == TipoInimigo::Capataz ? "o" : "a"));
+        }
     }
 }
 
@@ -203,7 +274,10 @@ void Partida::usar() {
             abrirComporta(alvo->x, alvo->y);
             avisar("Comporta destrancada");
             break;
-        case mundo::Celula::Elevador: descer(); break;
+        case mundo::Celula::Elevador:
+            if (chefe()) avisar("Derrote o chefe primeiro");
+            else if (andar_.numero < mundo::ULTIMO_ANDAR) descer();  // no último, a vitória vem sozinha
+            break;
         default: break;
     }
 }
@@ -235,7 +309,11 @@ void Partida::receberDano(int bruto, TipoInimigo autor) {
     vida_ -= std::max(1, bruto - defesa());
     if (vida_ <= 0 && !morto_) {
         morto_ = true;
-        causa_ = std::format("Destruído por um {}", dados(autor).nome);
+        // "por um Rato mecânico", "por uma Vespa a corda", "pela Rainha dos Ratos", "pelo Capataz a Vapor"
+        const bool chefe = dados(autor).chefe;
+        const bool feminino = autor == TipoInimigo::Vespa || autor == TipoInimigo::RainhaRatos || autor == TipoInimigo::GrandeMaquina;
+        causa_ = std::format("Destruído {} {}", chefe ? (feminino ? "pela" : "pelo") : (feminino ? "por uma" : "por um"),
+                             dados(autor).nome);
     }
 }
 
@@ -252,8 +330,15 @@ void Partida::cair(int dano) {
 
 void Partida::atualizar(const Comandos& c, float dt) {
     sons_.clear();
-    if (morto_) return;
+    if (morto_ || venceu_) return;
+    tempoDeJogo_ += dt;
     tempoDesdeDano_ += dt;
+    // A Grande Máquina caiu: vitória depois da espera (se o jogador continuar vivo)
+    if (desdeQuedaFinal_ && vida_ > 0 && (*desdeQuedaFinal_ += dt) >= ESPERA_VITORIA) {
+        venceu_ = true;
+        causa_ = CAUSA_VITORIA;
+        return;
+    }
     clarao_ = std::max(0.0f, clarao_ - dt);
 
     const glm::vec2 antes = jogador_.posicao;
@@ -267,7 +352,7 @@ void Partida::atualizar(const Comandos& c, float dt) {
             continue;
         glm::vec2 d = jogador_.posicao - i.posicao;
         const float dist = glm::length(d);
-        const float minimo = RAIO_JOGADOR + RAIO_INIMIGO;
+        const float minimo = RAIO_JOGADOR + raioDe(i);
         if (dist >= minimo) continue;
         d = dist > 1e-5f ? d / dist : glm::vec2(-1.0f, 0.0f);
         jogador_.posicao = mundo::moverComColisao(andar_.grade, jogador_.posicao, d * (minimo - dist), RAIO_JOGADOR,
@@ -279,6 +364,7 @@ void Partida::atualizar(const Comandos& c, float dt) {
         andadoDesdePasso_ -= DISTANCIA_PASSO;
         tocar(andar_.zona == mundo::Zona::Fabrica ? Som::PassoMetal : Som::PassoPedra);
     }
+    conferirArena();
     if (c.usar) usar();
     if (c.usarRapido >= 1 && c.usarRapido <= 4) usarEspaco(c.usarRapido - 1);
     pegarAoPassar();
@@ -319,8 +405,23 @@ void Partida::atualizar(const Comandos& c, float dt) {
     // Inimigos e seus tiros (bombas caem sem som; o som é o da explosão)
     MundoIA mundoIA{andar_.grade, jogador_.posicao, campo_, rng_, RAIO_JOGADOR, &campoSaltador_, jogador_.corpo.pes};
     if (!campoVoador_.empty()) mundoIA.campoVoador = &campoVoador_;
+    if (andar_.arena && *andar_.arena < andar_.salas.size()) mundoIA.arena = andar_.salas[*andar_.arena];
+    mundoIA.lutaComChefe = lutando_;
+    for (const Inimigo& i : inimigos_) {
+        if (i.estado == EstadoInimigo::Destruido) continue;
+        mundoIA.ratosVivos += i.tipo == TipoInimigo::Rato;
+        mundoIA.voadoresVivos += dados(i.tipo).voa;
+    }
     EventosIA eventos = atualizarInimigos(inimigos_, mundoIA, dt);
     for (const glm::ivec2& c2 : eventos.comportasParaAbrir) abrirComporta(c2.x, c2.y);
+    // Chamados pelo chefe: já entram perseguindo
+    for (const Invocacao& c2 : eventos.invocacoes) {
+        acrescentarInimigo(c2.tipo, c2.posicao);
+        inimigos_.back().estado = EstadoInimigo::Perseguindo;
+    }
+    // Onda pelo chão: quem está pulando escapa
+    for (const Onda& o : eventos.ondas)
+        if (ondaAtinge(o, jogador_.posicao, jogador_.corpo.noChao)) receberDano(o.dano, o.autor);
     for (const Alerta& a : eventos.alertas) tocar(a.tipo == TipoInimigo::Vespa ? Som::Zumbido : Som::Motor, a.posicao);
     for (const Projetil& t : eventos.tiros)
         if (t.raioExplosao == 0) tocar(Som::TiroInimigo, glm::vec2(t.posicao.x, t.posicao.z));

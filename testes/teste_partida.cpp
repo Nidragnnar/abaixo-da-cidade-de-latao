@@ -7,6 +7,7 @@
 
 #include "jogo/IA.h"
 #include "jogo/Partida.h"
+#include "jogo/Placar.h"
 #include "mundo/Gerador.h"
 #include "mundo/Terreno.h"
 
@@ -546,4 +547,149 @@ TEST_CASE("voador no alto não empurra o jogador") {
     const glm::vec2 antes = p.jogador().posicao;
     passos(p, 120);
     CHECK(glm::distance(p.jogador().posicao, antes) < 0.01f);
+}
+
+namespace {
+// Corredor do início até a arena (sala x 5–8, y 1–4) pela comporta em (4, 1); chefe no centro, elevador no canto
+jogo::Partida partidaComArena(char chefe, int andar) {
+    auto a = mundo::andarDeTexto({"##########", "#@..C....#", "#####....#", std::string("#####..") + chefe + ".#",
+                                  "#####...E#", "##########"},
+                                 andar);
+    a.salas = {mundo::Sala{1, 1, 3, 1}, mundo::Sala{5, 1, 4, 4}};
+    a.arena = 1;
+    return jogo::Partida(std::move(a), 1);
+}
+}
+
+TEST_CASE("entrar na arena tranca e acorda o chefe") {
+    auto p = partidaComArena('R', 2);
+    REQUIRE(p.chefe() != nullptr);
+    CHECK_FALSE(p.lutaComChefe());
+    p.definirPosicao({6.5f, 2.5f});
+    passos(p, 1);
+    CHECK(p.lutaComChefe());
+    CHECK(p.andar().grade.em(4, 1) == mundo::Celula::ComportaTrancada);
+    CHECK(p.chefe()->estado != jogo::EstadoInimigo::Parado);
+}
+
+TEST_CASE("trancar não prende o jogador dentro da comporta") {
+    auto p = partidaComArena('R', 2);
+    p.definirPosicao({5.15f, 1.5f});  // centro dentro da sala, corpo ainda na comporta
+    passos(p, 1);
+    CHECK_FALSE(p.lutaComChefe());
+    CHECK(p.andar().grade.em(4, 1) == mundo::Celula::Comporta);
+    p.definirPosicao({5.6f, 1.5f});
+    passos(p, 1);
+    CHECK(p.lutaComChefe());
+}
+
+TEST_CASE("chefe destruído destranca e solta obra-prima e 30 engrenagens") {
+    auto p = partidaComArena('R', 2);
+    p.tornarInvencivel();
+    p.definirPosicao({6.5f, 2.5f});
+    passos(p, 1);
+    p.destruirChefeParaTeste();
+    passos(p, 1);
+    CHECK_FALSE(p.lutaComChefe());
+    CHECK(p.chefe() == nullptr);
+    CHECK(p.chefesDerrotados() == 1);
+    CHECK(p.andar().grade.em(4, 1) == mundo::Celula::Comporta);
+    bool obraPrima = false, engrenagens = false;
+    for (const auto& c : p.chao()) {
+        if (const auto* i = std::get_if<jogo::Item>(&c.conteudo)) obraPrima |= i->qualidade == jogo::Qualidade::ObraPrima;
+        if (const auto* n = std::get_if<int>(&c.conteudo)) engrenagens |= *n == 30;
+    }
+    CHECK(obraPrima);
+    CHECK(engrenagens);
+    CHECK_FALSE(p.venceu());  // a Rainha não termina o jogo
+}
+
+TEST_CASE("elevador com chefe vivo avisa 'Derrote o chefe primeiro'") {
+    auto p = partidaComArena('R', 2);
+    p.tornarInvencivel();
+    p.definirPosicao({7.5f, 4.5f});
+    passos(p, 1, apertarE());
+    CHECK(p.mensagem() == "Derrote o chefe primeiro");
+    CHECK(p.trocasDeAndar() == 0);
+}
+
+TEST_CASE("Grande Máquina destruída: vitória depois de 3 s, causa e +500") {
+    auto p = partidaComArena('M', 6);
+    p.tornarInvencivel();
+    p.definirPosicao({5.6f, 1.5f});
+    passos(p, 1);
+    p.destruirChefeParaTeste();
+    passos(p, 60);
+    CHECK_FALSE(p.venceu());
+    CHECK_FALSE(p.terminou());
+    passos(p, 2 * 60 + 5);
+    CHECK(p.venceu());
+    CHECK(p.terminou());
+    CHECK(p.causaDaMorte() == jogo::CAUSA_VITORIA);
+    CHECK(p.pontuacao() ==
+          jogo::calcularPontuacao(6, p.inimigosDestruidos(), p.engrenagens(), p.nivel(), 1));
+    CHECK(p.tempoDeJogo() == doctest::Approx(1.0f / 60 * 186).epsilon(0.05));
+}
+
+TEST_CASE("morto não vence") {
+    auto p = partidaComArena('M', 6);
+    p.definirPosicao({5.6f, 1.5f});
+    passos(p, 1);
+    p.destruirChefeParaTeste();
+    passos(p, 1);  // recompensa (o XP sobe de nível e cura) antes do ferimento
+    p.ferirParaTeste(999);
+    passos(p, 4 * 60);
+    CHECK_FALSE(p.venceu());
+    CHECK(p.causaDaMorte() != jogo::CAUSA_VITORIA);
+}
+
+TEST_CASE("ratos da ninhada entram no andar") {
+    auto p = partidaComArena('R', 2);
+    p.tornarInvencivel();
+    p.definirPosicao({5.6f, 1.5f});
+    passos(p, static_cast<int>(8.5f * 60));
+    int ratos = 0;
+    for (const auto& i : p.inimigos()) ratos += i.tipo == jogo::TipoInimigo::Rato;
+    CHECK(ratos >= 1);
+    CHECK(ratos <= 6);
+}
+
+TEST_CASE("definirVidaDoChefe muda só a vida do chefe vivo") {
+    auto p = partidaComArena('M', 6);
+    p.definirVidaDoChefe(15);
+    REQUIRE(p.chefe() != nullptr);
+    CHECK(p.chefe()->vida == 15);
+    CHECK(p.chefe()->vidaMaxima == 420);
+}
+
+TEST_CASE("elevador do último andar não desce") {
+    auto p = partidaComArena('M', 6);
+    p.tornarInvencivel();
+    p.definirPosicao({7.5f, 4.5f});  // de frente para o elevador, dentro da arena
+    passos(p, 1);
+    p.destruirChefeParaTeste();
+    passos(p, 1);
+    passos(p, 1, apertarE());
+    CHECK(p.trocasDeAndar() == 0);
+    CHECK(p.andar().numero == 6);
+}
+
+TEST_CASE("arena tranca todas as aberturas do anel, não só as entradas") {
+    // Anel aberto à direita (x 9) e embaixo (y 5): corredor colado na parede da arena
+    auto a = mundo::andarDeTexto({"###########", "#@..C.....#", "#####.....#", "#####..R..#", "#####...E.#", "#####.....#",
+                                  "###########"},
+                                 2);
+    a.salas = {mundo::Sala{1, 1, 3, 1}, mundo::Sala{5, 1, 4, 4}};
+    a.arena = 1;
+    jogo::Partida p(std::move(a), 1);
+    p.definirPosicao({6.5f, 2.5f});
+    passos(p, 1);
+    REQUIRE(p.lutaComChefe());
+    for (int y = 0; y <= 5; ++y)
+        for (int x = 4; x <= 9; ++x) {
+            const bool anel = x == 4 || x == 9 || y == 0 || y == 5;
+            if (!anel) continue;
+            INFO("célula " << x << ", " << y);
+            CHECK(p.andar().grade.solida(x, y));
+        }
 }

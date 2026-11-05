@@ -29,6 +29,7 @@ add_library(nucleo STATIC
     src/jogo/Inimigos.cpp
     src/jogo/Projeteis.cpp
     src/jogo/IA.cpp
+    src/jogo/Chefes.cpp
     src/jogo/Armas.cpp
     src/jogo/Placar.cpp
     src/jogo/ArquivoTexto.cpp

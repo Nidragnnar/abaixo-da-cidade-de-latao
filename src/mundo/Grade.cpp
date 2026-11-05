@@ -134,6 +134,9 @@ MapaCarregado lerSoMapa(const std::vector<std::string>& linhas) {
                 case 'c':
                 case 'v':
                 case 'd':
+                case 'R':
+                case 'P':
+                case 'M':
                     mapa.grade.definir(x, y, Celula::Chao);
                     mapa.marcas.push_back({linhas[y][x], glm::vec2(x + 0.5f, y + 0.5f)});
                     break;

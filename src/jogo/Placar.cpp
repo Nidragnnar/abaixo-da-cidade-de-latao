@@ -45,8 +45,8 @@ std::string limpar(std::string texto) {
 
 }
 
-int calcularPontuacao(int andar, int inimigos, int engrenagens, int nivel) {
-    return 100 * andar + 10 * inimigos + engrenagens + 50 * nivel;
+int calcularPontuacao(int andar, int inimigos, int engrenagens, int nivel, int chefes) {
+    return 100 * andar + 10 * inimigos + engrenagens + 50 * nivel + 500 * chefes;
 }
 
 std::vector<RegistroPlacar> inserirNoPlacar(std::vector<RegistroPlacar> placar, RegistroPlacar r, int* posicao) {

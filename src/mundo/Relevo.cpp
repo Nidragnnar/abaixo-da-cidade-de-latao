@@ -19,6 +19,7 @@ namespace {
 constexpr int BLOCO = 4;            // quartos
 constexpr int TETO_CORREDOR = 6;    // quartos acima do chão
 constexpr int TETO_MAXIMO = 20, CHAO_MAXIMO = 12;  // em quartos (5 e 3 blocos)
+constexpr int TETO_ARENA = 16;     // acima do chão da arena (limitado ao TETO_MAXIMO)
 constexpr int ESPACO_MINIMO = 5;    // teto − chão (1,25 bloco)
 constexpr int SEM_SALA = -1;
 constexpr float CHANCE_SEGREDO = 0.35f;  // plataforma sem rampa: só pulando, com item em cima
@@ -137,6 +138,7 @@ void aplicarRelevo(Andar& a, uint32_t semente) {
         nivel[r] = sortear(rng, 0, plano ? 1 : 3) * BLOCO;
         tetoSala[r] = sortear(rng, 8, 12);
     }
+    if (a.arena) tetoSala[*a.arena] = TETO_ARENA;  // teto alto: a Grande Máquina chama voadores
 
     // 2. Platôs e distâncias de cada célula até cada platô
     size_t salaDoElevador = 0;
@@ -226,6 +228,7 @@ void aplicarRelevo(Andar& a, uint32_t semente) {
     };
 
     for (size_t r = 0; r < salas.size(); ++r) {
+        if (a.arena && r == *a.arena) continue;  // arena do chefe: chão plano, sem plataforma, poço nem caixas
         const Sala& s = salas[r];
         const int L = nivel[r];
         const int base = L;

@@ -101,9 +101,14 @@ void Audio::tocar(jogo::Som s, float volume, float pan) {
     Mix_PlayChannel(canal, c, 0);
 }
 
-void Audio::tocarMusica() {
+void Audio::tocarMusica(std::string_view nome) {
     if (!ativo_) return;
-    if (!musica_) musica_ = carregarPrimeiro<Mix_Music>("musica", "Música", [](const char* a) { return Mix_LoadMUS(a); });
+    if (nome != nomeMusica_) {  // outra música: para e troca
+        Mix_HaltMusic();
+        if (musica_) Mix_FreeMusic(musica_);
+        musica_ = carregarPrimeiro<Mix_Music>(nome, "Música", [](const char* a) { return Mix_LoadMUS(a); });
+        nomeMusica_ = nome;
+    }
     if (!musica_) return;
     if (!Mix_PlayingMusic()) Mix_PlayMusic(musica_, -1);
 }

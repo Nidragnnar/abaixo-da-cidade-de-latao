@@ -148,8 +148,11 @@ std::string nomeItem(const Item& i) {
     return std::format("{} {} +{}{}", nome, adjetivo(b.tipo, i.tipo, feminino), b.valor, porcento ? "%" : "");
 }
 
-Item gerarItem(int andar, std::mt19937& rng) {
-    const std::pair<ClasseItem, int> classes[] = {{ClasseItem::Consumivel, 35},
+namespace {
+
+// obraPrima: sem consumível e com qualidade de obra-prima (recompensa de chefe); senão, o sorteio da Etapa 4
+Item sortearItem(int andar, std::mt19937& rng, bool obraPrima) {
+    const std::pair<ClasseItem, int> classes[] = {{ClasseItem::Consumivel, obraPrima ? 0 : 35},
                                                   {ClasseItem::ArmaBranca, 20},
                                                   {ClasseItem::ArmaDeFogo, 20},
                                                   {ClasseItem::Armadura, 25}};
@@ -179,7 +182,7 @@ Item gerarItem(int andar, std::mt19937& rng) {
 
     Item item = criarItem(tipo);
     if (classe(tipo) == ClasseItem::Consumivel) return item;
-    item.qualidade = sortearQualidade(andar, rng);
+    item.qualidade = obraPrima ? Qualidade::ObraPrima : sortearQualidade(andar, rng);
     const size_t quantos = item.qualidade == Qualidade::ObraPrima ? 2 : item.qualidade == Qualidade::Modificada ? 1 : 0;
     std::vector<TipoBonus> possiveis = bonusPossiveis(tipo);
     for (size_t k = 0; k < quantos && !possiveis.empty(); ++k) {
@@ -191,6 +194,12 @@ Item gerarItem(int andar, std::mt19937& rng) {
     if (classe(tipo) == ClasseItem::ArmaDeFogo) item.carga = capacidade(item);  // vem carregada
     return item;
 }
+
+}
+
+Item gerarItem(int andar, std::mt19937& rng) { return sortearItem(andar, rng, false); }
+
+Item gerarObraPrima(int andar, std::mt19937& rng) { return sortearItem(andar, rng, true); }
 
 int tamanhoCaixa(TipoMunicao t) {
     switch (t) {

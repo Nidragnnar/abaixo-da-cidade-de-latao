@@ -36,6 +36,9 @@ struct EstadoHud {
     float tempoDesdeDano = 9;
     std::string_view mensagem;
     std::array<RapidoHud, 4> rapidos{};  // espaços 1–4 do inventário
+    // Luta com chefe (Etapa 7): barra larga no alto; nome vazio = sem barra
+    std::string_view nomeChefe;
+    int vidaChefe = 0, vidaMaximaChefe = 0;
 };
 
 // Camada no array das armas na mão: 0 chave parada, 1 chave golpe, 2 revólver parado, 3 tiro, 4 recarga,
@@ -55,6 +58,8 @@ struct DadosFim {
     uint32_t semente;
     std::string_view causa;
     int posicaoPlacar;  // 0 se não entrou no placar
+    bool vitoria = false;  // venceu a Grande Máquina (Etapa 7)
+    int segundos = 0;      // tempo de jogo, mostrado na vitória
 };
 
 // Painel escuro com o resumo da partida (seção 7 da spec)

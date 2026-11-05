@@ -38,6 +38,10 @@ DICAS
   mergulham para morder: a chave inglesa só pega quando ela desce; o revólver pega no ar.
 - Do andar 3 em diante, dirigíveis a vapor (ronco de motor) soltam bombas de cima:
   quando a bomba piscar caindo, saia de baixo.
+- O andar 2, o 4 e o 6 terminam num chefe: o elevador fica na arena dele, que tranca
+  quando você entra. Rainha dos Ratos (investe correndo e chama ratos), Capataz a Vapor
+  (leque de vapor e pancada no chão: pule a onda) e a Grande Máquina (rajadas e, com
+  metade da vida, chama voadores). Vencer a Grande Máquina termina o jogo: vitória!
 
 OPÇÕES, PLACAR E PROBLEMAS
 - Sensibilidade do mouse, volumes e tela cheia ficam no menu Opções.

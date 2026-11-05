@@ -135,13 +135,42 @@ std::optional<Andar> tentar(uint32_t semente, int numero, bool querTranca) {
         for (glm::ivec2 e : entradas(g, s))
             if (sortear01(rng) < CHANCE_COMPORTA) g.definir(e.x, e.y, Celula::Comporta);
 
-    // Início na sala 0; elevador no centro da sala mais distante pelo caminho
+    // Início na sala 0; elevador no centro da sala mais distante pelo caminho (no andar de chefe, na maior sala, que
+    // vira a arena; empate: a mais distante)
     andar.inicio = glm::vec2(salas[0].centro()) + 0.5f;
     const auto dist = distanciasNaGrade(g, salas[0].centro(), true);
-    size_t salaElevador = 0;
+    const bool chefe = andarDeChefe(numero) && salas.size() >= 2;
+    auto melhor = [&](size_t i, size_t atual) {
+        const int area = salas[i].largura * salas[i].altura, areaAtual = salas[atual].largura * salas[atual].altura;
+        if (chefe && area != areaAtual) return area > areaAtual;
+        return dist[indice(salas[i].centro())] > dist[indice(salas[atual].centro())];
+    };
+    size_t salaElevador = chefe ? 1 : 0;
     for (size_t i = 1; i < salas.size(); ++i)
-        if (dist[indice(salas[i].centro())] > dist[indice(salas[salaElevador].centro())]) salaElevador = i;
-    andar.elevador = salas[salaElevador].centro();
+        if (melhor(i, salaElevador)) salaElevador = i;
+    if (chefe) andar.arena = salaElevador;
+    // Na arena o centro é do chefe: o elevador vai para o canto mais longe do início que não encosta numa abertura
+    // (senão tamparia o corredor); sem canto assim, uma célula para dentro do primeiro canto
+    if (chefe) {
+        const Sala& s = salas[salaElevador];
+        auto fechado = [&](glm::ivec2 c) {
+            for (const glm::ivec2 d : {glm::ivec2(1, 0), glm::ivec2(-1, 0), glm::ivec2(0, 1), glm::ivec2(0, -1)}) {
+                const glm::ivec2 v = c + d;
+                if (!s.contem(v.x, v.y) && g.em(v.x, v.y) != Celula::Parede) return false;
+            }
+            return true;
+        };
+        andar.elevador = {s.x + 1, s.y + 1};
+        bool achou = false;
+        for (const glm::ivec2 canto : {glm::ivec2(s.x, s.y), glm::ivec2(s.x + s.largura - 1, s.y),
+                                       glm::ivec2(s.x, s.y + s.altura - 1), glm::ivec2(s.x + s.largura - 1, s.y + s.altura - 1)})
+            if (fechado(canto) && (!achou || dist[indice(canto)] > dist[indice(andar.elevador)])) {
+                andar.elevador = canto;
+                achou = true;
+            }
+    } else {
+        andar.elevador = salas[salaElevador].centro();
+    }
     g.definir(andar.elevador.x, andar.elevador.y, Celula::Elevador);
 
     if (!querTranca) return andar;
@@ -164,6 +193,8 @@ std::optional<Andar> tentar(uint32_t semente, int numero, bool querTranca) {
 }
 
 }
+
+std::vector<glm::ivec2> entradasDaSala(const Grade& g, const Sala& s) { return entradas(g, s); }
 
 uint32_t sementeDoAndar(uint32_t sementePartida, int numero) {
     return misturar(sementePartida ^ (static_cast<uint32_t>(numero) * 0x9E3779B9u));

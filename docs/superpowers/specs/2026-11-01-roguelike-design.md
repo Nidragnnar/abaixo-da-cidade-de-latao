@@ -72,7 +72,10 @@ A mesma semente gera sempre os mesmos andares e os mesmos itens.
 |---|---|---|---|
 | 1–2 | Esgotos | tijolo úmido, grades, pedra molhada | lampiões a gás, amarelada e fraca |
 | 3–4 | Fábrica abandonada | chapas rebitadas, canos de latão, piso de ferro | fornalhas, alaranjada |
-| 5+ | Minas e Grande Máquina | rocha, engrenagens gigantes, vigas | lâmpadas elétricas, azulada |
+| 5–6 | Minas e Grande Máquina | rocha, engrenagens gigantes, vigas | lâmpadas elétricas, azulada |
+
+Desde a Etapa 7 (`2026-11-05-etapa7-chefes-design.md`) os andares 2, 4 e 6 terminam num chefe, e vencer a Grande
+Máquina no andar 6 termina o jogo com vitória.
 
 A zona só troca o conjunto de texturas e a cor da luz; o gerador é o mesmo.
 
