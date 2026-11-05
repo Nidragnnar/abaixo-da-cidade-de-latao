@@ -65,6 +65,7 @@ private:
     bool trocarPendente_ = false;      // Q ou roda
     bool recarregarPendente_ = false;  // R
     int rapidoPendente_ = 0;           // 1–4
+    bool pularPendente_ = false;       // Espaço
     bool pausaPendente_ = false;       // Esc ou foco perdido no jogo
     bool ignorarBotao_ = false;        // o clique que capturou o mouse não ataca
     bool mapaVisivel_ = false;

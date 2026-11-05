@@ -1,5 +1,6 @@
 #include "render/Automapa.h"
 
+#include <algorithm>
 #include <cmath>
 
 #include "mundo/Gerador.h"
@@ -9,7 +10,8 @@ namespace render {
 namespace {
 
 constexpr glm::vec4 COR_PAINEL{0.0f, 0.0f, 0.0f, 1.0f};
-constexpr glm::vec4 COR_CHAO{0.35f, 0.33f, 0.30f, 1.0f};
+constexpr glm::vec4 COR_CHAO{0.58f, 0.55f, 0.50f, 1.0f};  // no chão mais alto; no nível 0 fica 60% (o tom da v1)
+constexpr glm::vec4 COR_MARCA{0.85f, 0.75f, 0.50f, 1.0f};  // rampa ou escada
 constexpr glm::vec4 COR_COMPORTA{0.80f, 0.60f, 0.20f, 1.0f};
 constexpr glm::vec4 COR_TRANCADA{0.80f, 0.20f, 0.20f, 1.0f};
 constexpr glm::vec4 COR_ELEVADOR{0.30f, 0.80f, 0.40f, 1.0f};
@@ -38,9 +40,17 @@ std::vector<VerticeCor> construirAutomapa(const mundo::Grade& g, const mundo::Ex
                 case mundo::Celula::ComportaAberta: cor = COR_COMPORTA; break;
                 case mundo::Celula::ComportaTrancada: cor = COR_TRANCADA; break;
                 case mundo::Celula::Elevador: cor = COR_ELEVADOR; break;
-                default: cor = COR_CHAO; break;
+                default:
+                    // Mais claro quanto mais alto o chão (poço fundo fica escuro)
+                    cor = COR_CHAO * glm::vec4(glm::vec3(0.6f + 0.4f * std::clamp(g.chao(x, y), 0, 12) / 12.0f), 1.0f);
+                    break;
             }
             adicionarRetangulo(v, naTela({x, y}), naTela({x + 1, y + 1}), cor);
+            // Rampa e escada: um ponto no meio
+            if (g.rampa(x, y) != mundo::Rampa::Nenhuma || g.detalhe(x, y) == mundo::Detalhe::Escada) {
+                const glm::vec2 meio = (naTela({x, y}) + naTela({x + 1, y + 1})) / 2.0f;
+                adicionarRetangulo(v, meio - 0.5f, meio + 0.5f, COR_MARCA);
+            }
         }
 
     if (chave && e.vista(static_cast<int>(chave->x), static_cast<int>(chave->y))) {

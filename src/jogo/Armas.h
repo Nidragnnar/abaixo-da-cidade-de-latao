@@ -53,7 +53,7 @@ int bonusPorChumbo(const DadosArma& d, int extra);
 // Troca, recarga e ataque da arma equipada ativa (seção 4 da spec), com dano base do nível e bônus do item;
 // a inclinação do olhar mira as armas de fogo na vertical
 ResultadoAtaque atualizarArmas(Armas& a, Inventario& inv, const Atributos& atr, const Comandos& c, glm::vec2 posicao,
-                               float angulo, float inclinacao, const mundo::Grade& g, std::vector<Inimigo>& inimigos,
+                               float pes, float angulo, float inclinacao, const mundo::Grade& g, std::vector<Inimigo>& inimigos,
                                std::mt19937& rng, float dt);
 
 }

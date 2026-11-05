@@ -22,9 +22,11 @@ constexpr float DISTANCIA_MIN_ATIRADOR = 3.0f, DISTANCIA_MAX_ATIRADOR = 6.0f;
 struct MundoIA {
     mundo::Grade& grade;
     glm::vec2 jogador;
-    const std::vector<int>& campo;  // distanciasNaGrade a partir da célula do jogador, sem atravessar tranca nem elevador
+    const std::vector<int>& campo;  // dos andarilhos: distanciasComAltura(..., ANDARILHO) a partir do jogador
     std::mt19937& rng;
     float raioJogador = 0.25f;  // inimigos não entram no jogador
+    const std::vector<int>* campoSaltador = nullptr;  // campo dos ratos (sobem 1 bloco); sem ele, usam `campo`
+    float pesJogador = 0.0f;
 };
 
 struct EventosIA {

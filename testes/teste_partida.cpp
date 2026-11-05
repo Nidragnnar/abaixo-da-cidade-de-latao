@@ -1,10 +1,14 @@
 #include <doctest/doctest.h>
 
 #include <ostream>  // o doctest precisa para mostrar string_view
+#include <string>
+
+#include <glm/geometric.hpp>
 
 #include "jogo/IA.h"
 #include "jogo/Partida.h"
 #include "mundo/Gerador.h"
+#include "mundo/Terreno.h"
 
 namespace {
 
@@ -392,4 +396,105 @@ TEST_CASE("dano e pegar tocam uma vez por passo") {
     p.colocarNoChao({p.jogador().posicao, 40});
     passos(p, 1);
     CHECK(contar(p, jogo::Som::Pegar) == 1);
+}
+
+namespace {
+jogo::Comandos frente(bool pular = false) {
+    jogo::Comandos c;
+    c.frente = 1;
+    c.pular = pular;
+    return c;
+}
+}
+
+TEST_CASE("queda de 2 blocos sem dano, de 3 com 10") {
+    // Começa em cima de uma plataforma e anda para fora da borda
+    auto cair = [](const std::string& alturas) {
+        jogo::Partida p(mundo::andarDeTexto({"#######", "#@....#", "#######"}, 1, {"0000000", alturas, "0000000"},
+                                            {"0000000", "0kkkkk0", "0000000"}),
+                        1);
+        for (int i = 0; i < 120; ++i) p.atualizar(frente(), 1.0f / 60);
+        return p;
+    };
+    CHECK(cair("0880000").vida() == 30);
+    const auto p3 = cair("0cc0000");
+    CHECK(p3.vida() == 20);
+    CHECK(p3.jogador().corpo.noChao);
+}
+
+TEST_CASE("morte por queda tem causa própria e ignora a armadura") {
+    jogo::Partida p(mundo::andarDeTexto({"#######", "#@....#", "#######"}, 1, {"0000000", "0cc0000", "0000000"},
+                                        {"0000000", "0kkkkk0", "0000000"}),
+                    1);
+    p.ferirParaTeste(25);  // sobra 5; a queda de 3 blocos tira 10 (defesa do casaco não conta)
+    for (int i = 0; i < 120; ++i) p.atualizar(frente(), 1.0f / 60);
+    CHECK(p.morto());
+    CHECK(p.causaDaMorte() == "Caiu de muito alto");
+}
+
+TEST_CASE("pulo na quina sob teto baixo não prende") {
+    // Parede ao norte, degrau de 1 bloco a leste, teto de 1,5 bloco
+    jogo::Partida p(mundo::andarDeTexto({"#####", "#@..#", "#...#", "#####"}, 1, {"00000", "00440", "00000", "00000"},
+                                        {"00000", "06660", "06660", "00000"}),
+                    1);
+    p.definirAngulo(-0.6f);  // contra a quina (nordeste)
+    for (int i = 0; i < 120; ++i) {
+        p.atualizar(frente(i % 20 == 0), 1.0f / 60);
+        const auto& j = p.jogador();
+        REQUIRE(j.corpo.pes >= mundo::alturaDoChao(p.andar().grade, j.posicao) - 1e-3f);
+        REQUIRE(j.corpo.pes + mundo::ALTURA_CORPO <= mundo::alturaDoTeto(p.andar().grade, j.posicao) + 1e-3f);
+    }
+    // Dá para sair andando para trás
+    const glm::vec2 antes = p.jogador().posicao;
+    jogo::Comandos tras;
+    tras.frente = -1;
+    for (int i = 0; i < 30; ++i) p.atualizar(tras, 1.0f / 60);
+    CHECK(glm::distance(antes, p.jogador().posicao) > 0.5f);
+}
+
+TEST_CASE("descer no ar zera a queda") {
+    jogo::Partida p(mundo::andarDeTexto({"####", "#@E#", "####"}, 1), 99);
+    jogo::Comandos pulo;
+    pulo.pular = true;
+    p.atualizar(pulo, 1.0f / 60);
+    for (int i = 0; i < 10; ++i) p.atualizar({}, 1.0f / 60);
+    REQUIRE_FALSE(p.jogador().corpo.noChao);
+    jogo::Comandos e;
+    e.usar = true;
+    p.atualizar(e, 1.0f / 60);
+    REQUIRE(p.andar().numero == 2);
+    CHECK(p.jogador().corpo.noChao);
+    CHECK(p.jogador().corpo.velocidade == 0.0f);
+    CHECK(p.jogador().corpo.pes == doctest::Approx(mundo::alturaDoChao(p.andar().grade, p.jogador().posicao)));
+    for (int i = 0; i < 60; ++i) p.atualizar({}, 1.0f / 60);
+    CHECK(p.vida() == 30);
+}
+
+TEST_CASE("item na plataforma só se pega lá em cima") {
+    // Plataforma de 1 bloco nas colunas 3–4; o item está nela
+    jogo::Partida p(mundo::andarDeTexto({"######", "#@...#", "######"}, 1, {"000000", "000440", "000000"},
+                                        {"000000", "088880", "000000"}),
+                    1);
+    p.colocarNoChao({{3.5f, 1.5f}, jogo::criarItem(jogo::TipoItem::Sabre)});
+    p.definirPosicao({2.5f, 1.5f});
+    passos(p, 1, apertarE());
+    CHECK_FALSE(p.inventario().espaco(1).has_value());  // de baixo, não pega
+    p.definirPosicao({3.2f, 1.5f});
+    passos(p, 2);  // os pés sobem para a plataforma
+    REQUIRE(p.jogador().corpo.pes == doctest::Approx(1.0f));
+    p.definirAngulo(0.0f);
+    passos(p, 1, apertarE());
+    CHECK(p.inventario().espaco(1).has_value());
+}
+
+TEST_CASE("item largado na plataforma fica no alto") {
+    jogo::Partida p(mundo::andarDeTexto({"######", "#@...#", "######"}, 1, {"000000", "044400", "000000"},
+                                        {"000000", "088880", "000000"}),
+                    1);
+    REQUIRE(p.jogador().corpo.pes == doctest::Approx(1.0f));
+    p.largarEspaco(0);  // tônicos, à frente (ainda em cima da plataforma)
+    REQUIRE(p.chao().size() == 1);
+    CHECK(mundo::alturaDoChao(p.andar().grade, p.chao()[0].posicao) == doctest::Approx(1.0f));
+    passos(p, 1, apertarE());  // e pega de volta lá de cima
+    CHECK(p.chao().empty());
 }

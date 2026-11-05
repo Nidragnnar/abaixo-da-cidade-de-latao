@@ -12,6 +12,7 @@ void Entrada::descartarGiro() {
     giroAcumulado_ = inclinarAcumulado_ = 0.0f;
     usarPendente_ = trocarPendente_ = recarregarPendente_ = false;
     rapidoPendente_ = 0;
+    pularPendente_ = false;
 }
 
 void Entrada::abrirInventario(bool sim) {
@@ -137,6 +138,7 @@ void Entrada::processarEvento(const SDL_Event& e) {
                     if (capturado_ || inventarioAberto_) abrirInventario(!inventarioAberto_);
                     break;
                 case SDL_SCANCODE_TAB: mapaVisivel_ = !mapaVisivel_; break;
+                case SDL_SCANCODE_SPACE: pularPendente_ = capturado_; break;
                 default: break;
             }
             break;
@@ -174,9 +176,11 @@ jogo::Comandos Entrada::coletar() {
     c.trocarArma = trocarPendente_;
     c.recarregar = recarregarPendente_;
     c.usarRapido = rapidoPendente_;
+    c.pular = pularPendente_;
     giroAcumulado_ = inclinarAcumulado_ = 0.0f;
     usarPendente_ = trocarPendente_ = recarregarPendente_ = false;
     rapidoPendente_ = 0;
+    pularPendente_ = false;
     return c;
 }
 

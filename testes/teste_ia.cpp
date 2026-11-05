@@ -2,12 +2,14 @@
 
 #include <cmath>
 #include <random>
+#include <string>
 
 #include <glm/geometric.hpp>
 
 #include "jogo/IA.h"
 #include "mundo/Consultas.h"
 #include "mundo/Gerador.h"
+#include "mundo/Terreno.h"
 
 namespace {
 
@@ -173,3 +175,97 @@ TEST_CASE("atirador encurralado atira de perto") {
     auto e = simular(v, a.grade, {3.5f, 1.5f}, 2.5f);
     CHECK(e.tiros.size() >= 1);
 }
+
+namespace {
+// Como simular, mas com os dois campos com alturas e os pés do jogador
+jogo::EventosIA simular3D(std::vector<jogo::Inimigo>& v, mundo::Grade& g, glm::vec2 jogador, float pes, float segundos) {
+    std::mt19937 rng(3);
+    jogo::EventosIA total;
+    std::vector<int> andarilho, saltador;
+    float desdeCampo = jogo::RECALCULO_CAMINHO;
+    for (int i = 0; i < static_cast<int>(std::lround(segundos * 60)); ++i) {
+        if (desdeCampo >= jogo::RECALCULO_CAMINHO) {
+            andarilho = mundo::distanciasComAltura(g, glm::ivec2(jogador), mundo::ANDARILHO);
+            saltador = mundo::distanciasComAltura(g, glm::ivec2(jogador), mundo::SALTADOR);
+            desdeCampo = 0;
+        }
+        jogo::MundoIA m{g, jogador, andarilho, rng};
+        m.campoSaltador = &saltador;
+        m.pesJogador = pes;
+        auto e = jogo::atualizarInimigos(v, m, 1.0f / 60);
+        total.golpes.insert(total.golpes.end(), e.golpes.begin(), e.golpes.end());
+        total.tiros.insert(total.tiros.end(), e.tiros.begin(), e.tiros.end());
+        desdeCampo += 1.0f / 60;
+    }
+    return total;
+}
+// Plataforma de 1 bloco nas colunas 2–5 da linha 1 (com ou sem rampa na coluna 2), chão 0 na linha 2
+mundo::Andar plataforma(bool comRampa, char inimigo) {
+    return mundo::andarDeTexto({"#######", "#@....#", std::string("#....") + inimigo + "#", "#######"}, 1,
+                               {"0000000", comRampa ? "00l4440" : "0044440", "0000000", "0000000"},
+                               {"0000000", "0999990", "0999990", "0000000"});
+}
+}
+
+TEST_CASE("autômato sobe pela rampa até o jogador na plataforma") {
+    auto a = plataforma(true, 'a');
+    auto v = jogo::inimigosDasMarcas(a);
+    simular3D(v, a.grade, {4.5f, 1.5f}, 1.0f, 10.0f);
+    CHECK(glm::distance(v[0].posicao, glm::vec2(4.5f, 1.5f)) <= 1.2f);
+    CHECK(v[0].corpo.pes == doctest::Approx(1.0f));
+}
+
+TEST_CASE("rato pula 1 bloco; autômato não") {
+    auto a = plataforma(false, 'r');
+    auto ratos = jogo::inimigosDasMarcas(a);
+    simular3D(ratos, a.grade, {4.5f, 1.5f}, 1.0f, 6.0f);
+    CHECK(ratos[0].corpo.pes == doctest::Approx(1.0f));
+    auto b = plataforma(false, 'a');
+    auto automatos = jogo::inimigosDasMarcas(b);
+    simular3D(automatos, b.grade, {4.5f, 1.5f}, 1.0f, 6.0f);
+    CHECK(automatos[0].corpo.pes == doctest::Approx(0.0f));
+}
+
+TEST_CASE("corpo a corpo não alcança 1 bloco acima") {
+    auto a = plataforma(false, 'a');
+    auto v = jogo::inimigosDasMarcas(a);
+    v[0].posicao = {4.5f, 2.3f};  // colado embaixo da borda
+    v[0].estado = jogo::EstadoInimigo::Perseguindo;
+    const auto e = simular3D(v, a.grade, {4.5f, 1.7f}, 1.0f, 5.0f);
+    CHECK(e.golpes.empty());
+}
+
+TEST_CASE("empurrado da plataforma cai e persegue") {
+    auto a = plataforma(false, 'a');
+    auto v = jogo::inimigosDasMarcas(a);
+    v[0].posicao = {4.5f, 1.5f};
+    v[0].corpo.pes = 1.0f;
+    v[0].estado = jogo::EstadoInimigo::Perseguindo;
+    v[0].empurrao = {0.0f, 1.0f};  // para fora da borda, para o sul
+    simular3D(v, a.grade, {1.5f, 2.5f}, 0.0f, 4.0f);
+    CHECK(v[0].corpo.pes == doctest::Approx(0.0f));
+    CHECK(glm::distance(v[0].posicao, glm::vec2(1.5f, 2.5f)) <= 1.2f);
+}
+
+TEST_CASE("borda protege de quem atira de cima") {
+    // Atirador numa plataforma de 2 blocos (colunas 1–2); jogador colado embaixo da borda
+    auto a = mundo::andarDeTexto({"#######", "#g@...#", "#######"}, 1, {"0000000", "0880000", "0000000"},
+                                 {"0000000", "0kkkkk0", "0000000"});
+    auto v = jogo::inimigosDasMarcas(a);
+    REQUIRE(v[0].corpo.pes == doctest::Approx(2.0f));
+    v[0].estado = jogo::EstadoInimigo::Perseguindo;
+    const auto e = simular3D(v, a.grade, {3.3f, 1.5f}, 0.0f, 5.0f);
+    CHECK(e.tiros.empty());
+}
+
+TEST_CASE("inimigos não levam dano de queda") {
+    auto a = mundo::andarDeTexto({"######", "#a@..#", "######"}, 1, {"000000", "0c0000", "000000"},
+                                 {"000000", "0kkkk0", "000000"});
+    auto v = jogo::inimigosDasMarcas(a);
+    const int vida = v[0].vida;
+    v[0].empurrao = {1.0f, 0.0f};
+    simular3D(v, a.grade, {4.5f, 1.5f}, 0.0f, 2.0f);
+    CHECK(v[0].corpo.pes == doctest::Approx(0.0f));
+    CHECK(v[0].vida == vida);
+}
+

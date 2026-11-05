@@ -35,6 +35,10 @@ add_library(nucleo STATIC
     src/jogo/Config.cpp
     src/jogo/Sons.cpp
     src/jogo/Demo.cpp
+    src/mundo/Luzes.cpp
+    src/mundo/Terreno.cpp
+    src/mundo/Relevo.cpp
+    src/render/Luzes.cpp
     src/ui/Menus.cpp
     src/jogo/Itens.cpp
     src/jogo/Inventario.cpp

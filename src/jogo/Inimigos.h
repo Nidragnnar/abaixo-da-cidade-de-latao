@@ -5,6 +5,7 @@
 #include <glm/vec2.hpp>
 
 #include "mundo/Gerador.h"
+#include "mundo/Terreno.h"
 
 namespace jogo {
 
@@ -41,6 +42,7 @@ struct Inimigo {
     float tempoNoEstado = 0;
     glm::vec2 empurrao{0.0f};  // aplicado (e zerado) no próximo passo da IA
     bool recompensado = false;  // destruído e já contado (XP e o que caiu no chão)
+    mundo::CorpoVertical corpo;  // altura dos pés (segue o terreno; sem dano de queda)
 };
 
 // Um acerto num alvo (dano bruto, antes da defesa) e quem o deu

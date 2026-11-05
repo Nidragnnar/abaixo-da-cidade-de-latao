@@ -15,6 +15,7 @@ enum CamadaTextura : int {
     ParedeFabrica, ChaoFabrica, TetoFabrica,
     ParedeMinas, ChaoMinas, TetoMinas,
     CamadaComporta, CamadaComportaTrancada,
+    CamadaCaixa, CamadaDegrau,  // Etapa 6A
     TOTAL_CAMADAS
 };
 
@@ -33,7 +34,13 @@ struct Vertice {
 void adicionarQuadrado(std::vector<Vertice>& v, glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 d, float camada,
                        glm::vec3 normal);
 
-// Chão e teto de toda célula que não é parede; faces só contra paredes (6 vértices por quadrado)
+// Quadrado com uv próprio em cada canto (texturas em unidades de mundo)
+void adicionarQuadradoUV(std::vector<Vertice>& v, glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 d, glm::vec2 ua,
+                         glm::vec2 ub, glm::vec2 uc, glm::vec2 ud, float camada, glm::vec3 normal);
+
+// Chão (rampa inclinada) e teto de toda célula que não é parede, nas suas alturas; paredes do chão ao teto; entre
+// células abertas, a frente do degrau (voltada para a mais baixa) e o beiral do teto (voltado para a de teto mais alto).
+// A textura segue o tamanho do mundo (v = altura em blocos). 6 vértices por quadrado.
 std::vector<Vertice> construirGeometria(const mundo::Grade& g, mundo::Zona z);
 
 }

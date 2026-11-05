@@ -228,6 +228,8 @@ std::vector<CoisaNoChao> gerarChao(const mundo::Andar& andar, uint32_t semente) 
     for (int i = 0; i < itens; ++i) colocar(gerarItem(andar.numero, rng));
     for (int i = 0; i < caixas; ++i) colocar(sortearCaixa(andar.numero, rng));
     for (int i = 0; i < pilhas; ++i) colocar(mundo::sortear(rng, 5, 20) * andar.numero);
+    // Prêmio de quem pula até a plataforma secreta (Etapa 6A)
+    for (const glm::vec2 p : andar.pontosSecretos) chao.push_back({p, gerarItem(andar.numero, rng)});
     return chao;
 }
 

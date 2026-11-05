@@ -6,6 +6,9 @@
 
 #include "jogo/Itens.h"
 #include "mundo/Gerador.h"
+#include "mundo/Terreno.h"
+
+#include <glm/common.hpp>
 
 TEST_CASE("tabelas da spec") {
     CHECK(jogo::dadosArma(jogo::TipoItem::Bacamarte).chumbos == 7);
@@ -102,7 +105,7 @@ TEST_CASE("chão do andar") {
                 REQUIRE((v >= 5 * 3 && v <= 20 * 3));
             }
         }
-        REQUIRE((itens >= 4 && itens <= 7));
+        REQUIRE((itens >= 4 && itens <= 7 + static_cast<int>(a.pontosSecretos.size())));  // + prêmio de cada segredo
         REQUIRE((municao >= 3 && municao <= 5));
         REQUIRE((engrenagens >= 3 && engrenagens <= 6));
     }
@@ -133,4 +136,34 @@ TEST_CASE("arma de impacto com mais dano é Pesada, não Afiada") {
     CHECK(jogo::nomeItem(c) == "Chave inglesa Pesada +1");
     jogo::Item s{jogo::TipoItem::Sabre, jogo::Qualidade::Modificada, {{jogo::TipoBonus::Dano, 3}}};
     CHECK(jogo::nomeItem(s) == "Sabre de oficial Afiado +3");
+}
+
+TEST_CASE("ponto secreto tem item") {
+    int conferidos = 0;
+    for (uint32_t s = 1; s <= 300 && conferidos < 5; ++s) {
+        const auto a = mundo::gerarAndar(s, 3 + static_cast<int>(s % 2));
+        if (a.pontosSecretos.empty()) continue;
+        const auto chao = jogo::gerarChao(a, s);
+        for (const glm::vec2 p : a.pontosSecretos) {
+            ++conferidos;
+            bool tem = false;
+            for (const auto& c : chao) tem |= c.posicao == p && std::holds_alternative<jogo::Item>(c.conteudo);
+            CHECK(tem);
+        }
+    }
+    CHECK(conferidos >= 5);
+}
+
+TEST_CASE("tudo no chão se alcança, nem que seja pulando") {
+    for (uint32_t s = 1; s <= 300; ++s) {
+        const int n = 1 + static_cast<int>(s % 6);
+        const auto a = mundo::gerarAndar(s, n);
+        mundo::RegrasPassagem pulando = mundo::SALTADOR;  // o pulo do jogador sobe 1 bloco, como o rato
+        pulando.atravessaTrancada = pulando.atravessaElevador = true;
+        for (const auto& c : jogo::gerarChao(a, s)) {
+            const auto d = mundo::distanciasComAltura(a.grade, glm::ivec2(glm::floor(c.posicao)), pulando);
+            INFO("semente ", s, " andar ", n, " coisa em ", c.posicao.x, ",", c.posicao.y);
+            REQUIRE(d[static_cast<size_t>(static_cast<int>(a.inicio.y) * 64 + static_cast<int>(a.inicio.x))] >= 0);
+        }
+    }
 }

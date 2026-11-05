@@ -34,3 +34,14 @@ TEST_CASE("chave só aparece se a célula dela foi vista") {
     auto vendo = render::construirAutomapa(m.grade, e, m.inicio, 0.0f, m.chave, 480, 270).size();
     CHECK(vendo == semVer + 6 + 6);  // chão da célula + marca da chave
 }
+
+TEST_CASE("automapa mais claro no alto") {
+    auto m = mundo::carregarDeTexto({"####", "#@.#", "####"}, {"0000", "00c0", "0000"});
+    mundo::Exploracao e(4, 3);
+    e.marcarTudo();
+    const auto v = render::construirAutomapa(m.grade, e, m.inicio, 0.0f, {}, 480, 270);
+    // Depois do painel (6 vértices) vêm as duas células, na ordem de varredura: (1,1) chão 0 e (2,1) chão 12
+    REQUIRE(v.size() >= 6 + 12);
+    const float baixa = v[6].cor.r + v[6].cor.g + v[6].cor.b, alta = v[12].cor.r + v[12].cor.g + v[12].cor.b;
+    CHECK(alta > baixa);
+}

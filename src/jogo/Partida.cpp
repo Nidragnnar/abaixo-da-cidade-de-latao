@@ -36,7 +36,9 @@ Partida::Partida(mundo::Andar andar, uint32_t semente)
       jogador_{andar_.inicio, 0.0f},
       exploracao_(andar_.grade.largura(), andar_.grade.altura()),
       rng_(semente ^ 0xC0FFEEu),
-      inimigos_(inimigosDasMarcas(andar_)) {}
+      inimigos_(inimigosDasMarcas(andar_)) {
+    jogador_.corpo.pes = mundo::alturaDoChao(andar_.grade, andar_.inicio);
+}
 
 float Partida::aberturaComporta(int x, int y) const {
     if (andar_.grade.em(x, y) == mundo::Celula::ComportaAberta) return 1.0f;
@@ -112,7 +114,7 @@ void Partida::largarEspaco(int i) {
     if (!item) return;
     // À frente do jogador, sem atravessar parede
     const glm::vec2 frente{std::cos(jogador_.angulo), std::sin(jogador_.angulo)};
-    const glm::vec2 lugar = mundo::moverComColisao(andar_.grade, jogador_.posicao, frente * 0.6f, 0.1f);
+    const glm::vec2 lugar = mundo::moverComColisao(andar_.grade, jogador_.posicao, frente * 0.6f, 0.1f, jogador_.corpo.pes);
     chao_.push_back({lugar, std::move(*item)});
 }
 
@@ -121,7 +123,7 @@ bool Partida::pegarItemAFrente() {
     int melhor = -1;
     float melhorDistancia = ALCANCE_PEGAR;
     for (size_t k = 0; k < chao_.size(); ++k) {
-        if (!std::holds_alternative<Item>(chao_[k].conteudo)) continue;
+        if (!std::holds_alternative<Item>(chao_[k].conteudo) || !noMesmoNivel(chao_[k].posicao)) continue;
         const glm::vec2 ate = chao_[k].posicao - jogador_.posicao;
         const float aoLongo = glm::dot(ate, frente);
         const float lateral = std::abs(ate.x * frente.y - ate.y * frente.x);
@@ -145,7 +147,7 @@ bool Partida::pegarItemAFrente() {
 
 void Partida::pegarAoPassar() {
     std::erase_if(chao_, [&](CoisaNoChao& c) {
-        if (glm::distance(c.posicao, jogador_.posicao) >= RAIO_PEGAR) return false;
+        if (glm::distance(c.posicao, jogador_.posicao) >= RAIO_PEGAR || !noMesmoNivel(c.posicao)) return false;
         if (auto* m = std::get_if<MunicaoNoChao>(&c.conteudo)) {
             int& reserva = armas_.municao.de(m->tipo);
             const int cabe = std::min(m->quantidade, maximoMunicao(m->tipo) - reserva);
@@ -203,6 +205,8 @@ void Partida::usar() {
 void Partida::descer() {
     andar_ = mundo::gerarAndar(semente_, andar_.numero + 1);
     jogador_.posicao = andar_.inicio;  // mantém o ângulo
+    jogador_.corpo = {};               // pés no chão do início, sem queda herdada do pulo
+    jogador_.corpo.pes = mundo::alturaDoChao(andar_.grade, andar_.inicio);
     exploracao_ = mundo::Exploracao(andar_.grade.largura(), andar_.grade.altura());
     abrindo_.clear();
     temChave_ = false;
@@ -227,6 +231,17 @@ void Partida::receberDano(int bruto, TipoInimigo autor) {
     }
 }
 
+void Partida::cair(int dano) {
+    tempoDesdeDano_ = 0.0f;
+    tocar(Som::Dano);
+    if (invencivel_) return;
+    vida_ -= dano;
+    if (vida_ <= 0 && !morto_) {
+        morto_ = true;
+        causa_ = "Caiu de muito alto";
+    }
+}
+
 void Partida::atualizar(const Comandos& c, float dt) {
     sons_.clear();
     if (morto_) return;
@@ -234,7 +249,7 @@ void Partida::atualizar(const Comandos& c, float dt) {
     clarao_ = std::max(0.0f, clarao_ - dt);
 
     const glm::vec2 antes = jogador_.posicao;
-    atualizarJogador(jogador_, c, andar_.grade, dt);
+    if (const int danoQueda = mundo::danoDeQueda(atualizarJogador(jogador_, c, andar_.grade, dt))) cair(danoQueda);
     // O jogador não atravessa inimigos vivos: é empurrado para fora de quem estiver colado nele
     for (const Inimigo& i : inimigos_) {
         if (i.estado == EstadoInimigo::Destruido) continue;
@@ -243,7 +258,8 @@ void Partida::atualizar(const Comandos& c, float dt) {
         const float minimo = RAIO_JOGADOR + RAIO_INIMIGO;
         if (dist >= minimo) continue;
         d = dist > 1e-5f ? d / dist : glm::vec2(-1.0f, 0.0f);
-        jogador_.posicao = mundo::moverComColisao(andar_.grade, jogador_.posicao, d * (minimo - dist), RAIO_JOGADOR);
+        jogador_.posicao = mundo::moverComColisao(andar_.grade, jogador_.posicao, d * (minimo - dist), RAIO_JOGADOR,
+                                                  jogador_.corpo.pes);
     }
     // Passos: metal na fábrica, pedra no esgoto e nas minas
     andadoDesdePasso_ += glm::distance(antes, jogador_.posicao);
@@ -257,7 +273,7 @@ void Partida::atualizar(const Comandos& c, float dt) {
 
     // Armas; o barulho acorda os inimigos parados
     const ResultadoAtaque ataque =
-        atualizarArmas(armas_, inventario_, atributos_, c, jogador_.posicao, jogador_.angulo, jogador_.inclinacao,
+        atualizarArmas(armas_, inventario_, atributos_, c, jogador_.posicao, jogador_.corpo.pes, jogador_.angulo, jogador_.inclinacao,
                        andar_.grade, inimigos_, rng_, dt);
     if (ataque.disparou) {
         clarao_ = DURACAO_CLARAO;
@@ -277,17 +293,21 @@ void Partida::atualizar(const Comandos& c, float dt) {
     // Campo de fluxo até o jogador (a gaiola do elevador bloqueia a passagem durante a busca)
     desdeCampo_ += dt;
     if (desdeCampo_ >= RECALCULO_CAMINHO) {
-        campo_ = mundo::distanciasNaGrade(andar_.grade, glm::ivec2(glm::floor(jogador_.posicao)), false, false);
+        const glm::ivec2 celula(glm::floor(jogador_.posicao));
+        campo_ = mundo::distanciasComAltura(andar_.grade, celula, mundo::ANDARILHO);
+        campoSaltador_ = mundo::distanciasComAltura(andar_.grade, celula, mundo::SALTADOR);
         desdeCampo_ = 0.0f;
     }
 
     // Inimigos e seus tiros
-    EventosIA eventos = atualizarInimigos(inimigos_, {andar_.grade, jogador_.posicao, campo_, rng_, RAIO_JOGADOR}, dt);
+    EventosIA eventos = atualizarInimigos(
+        inimigos_, {andar_.grade, jogador_.posicao, campo_, rng_, RAIO_JOGADOR, &campoSaltador_, jogador_.corpo.pes}, dt);
     for (const glm::ivec2& c2 : eventos.comportasParaAbrir) abrirComporta(c2.x, c2.y);
-    for (const Projetil& t : eventos.tiros) tocar(Som::TiroInimigo, t.posicao);
+    for (const Projetil& t : eventos.tiros) tocar(Som::TiroInimigo, glm::vec2(t.posicao.x, t.posicao.z));
     projeteis_.insert(projeteis_.end(), eventos.tiros.begin(), eventos.tiros.end());
     for (const Golpe& g : eventos.golpes) receberDano(g.dano, g.autor);
-    const ResultadoProjeteis tiros = atualizarProjeteis(projeteis_, andar_.grade, jogador_.posicao, RAIO_JOGADOR, dt);
+    const glm::vec3 centro{jogador_.posicao.x, jogador_.corpo.pes + mundo::ALTURA_CORPO / 2, jogador_.posicao.y};
+    const ResultadoProjeteis tiros = atualizarProjeteis(projeteis_, andar_.grade, centro, RAIO_JOGADOR, dt);
     for (const Golpe& g : tiros.golpes) receberDano(g.dano, g.autor);
 
     // Comportas sobem; ao terminar viram passagem
@@ -302,7 +322,7 @@ void Partida::atualizar(const Comandos& c, float dt) {
         }
     }
 
-    if (andar_.chave && glm::distance(*andar_.chave, jogador_.posicao) < RAIO_PEGAR) {
+    if (andar_.chave && glm::distance(*andar_.chave, jogador_.posicao) < RAIO_PEGAR && noMesmoNivel(*andar_.chave)) {
         andar_.chave.reset();
         temChave_ = true;
         avisar("Você pegou a válvula-chave");

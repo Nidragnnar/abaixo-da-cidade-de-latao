@@ -8,8 +8,8 @@
 
 namespace render {
 
-glm::mat4 matrizVisao(glm::vec2 posicao, float angulo, float inclinacao) {
-    const glm::vec3 olho{posicao.x, ALTURA_OLHOS, posicao.y};
+glm::mat4 matrizVisao(glm::vec2 posicao, float angulo, float inclinacao, float alturaOlhos) {
+    const glm::vec3 olho{posicao.x, alturaOlhos, posicao.y};
     const float h = std::cos(inclinacao);  // parte horizontal do olhar
     const glm::vec3 frente{std::cos(angulo) * h, std::sin(inclinacao), std::sin(angulo) * h};
     return glm::lookAt(olho, olho + frente, glm::vec3(0.0f, 1.0f, 0.0f));

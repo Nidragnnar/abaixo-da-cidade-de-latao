@@ -8,6 +8,7 @@
 
 #include "mundo/Aleatorio.h"
 #include "mundo/Consultas.h"
+#include "mundo/Relevo.h"
 
 namespace mundo {
 
@@ -172,15 +173,19 @@ Andar gerarAndar(uint32_t sementePartida, int numero) {
     const uint32_t base = sementeDoAndar(sementePartida, numero);
     std::mt19937 sorteioTranca(base ^ 0xA5A5A5A5u);
     const bool querTranca = numero >= 2 && sortear01(sorteioTranca) < CHANCE_TRANCA;
+    std::optional<Andar> a;
     if (querTranca)
-        for (int v = 0; v < VARIACOES_TRANCA; ++v)
-            if (auto a = tentar(base + static_cast<uint32_t>(v) * 7919u, numero, true)) return std::move(*a);
-    // Sem tranca (ou nenhuma variação permitiu tranca)
-    return std::move(*tentar(base, numero, false));
+        for (int v = 0; v < VARIACOES_TRANCA && !a; ++v) a = tentar(base + static_cast<uint32_t>(v) * 7919u, numero, true);
+    if (!a) a = tentar(base, numero, false);  // sem tranca (ou nenhuma variação permitiu tranca)
+    // Depois do desenho 2D, com sorteios próprios: relevo (Etapa 6A) e lampiões
+    aplicarRelevo(*a, base);
+    a->luzes = gerarLuzes(*a, base);
+    return std::move(*a);
 }
 
-Andar andarDeTexto(const std::vector<std::string>& linhas, int numero) {
-    MapaCarregado m = carregarDeTexto(linhas);
+Andar andarDeTexto(const std::vector<std::string>& linhas, int numero, const std::vector<std::string>& alturas,
+                   const std::vector<std::string>& tetos) {
+    MapaCarregado m = carregarDeTexto(linhas, alturas, tetos);
     return Andar{numero, zonaDoAndar(numero), std::move(m.grade), {}, m.inicio,
                  m.elevador.value_or(glm::ivec2(-1, -1)), m.chave, std::move(m.marcas)};
 }

@@ -125,6 +125,7 @@ a comporta trancada; a mesma semente gera a mesma grade.
 | W A S D | andar e andar de lado |
 | Mouse | girar e olhar para cima/baixo |
 | Clique esquerdo | atacar com a arma na mão |
+| Espaço | pular (Etapa 6A) |
 | Q ou roda do mouse | alternar entre arma branca e arma de fogo |
 | R | recarregar a arma de fogo |
 | E | usar: abrir comporta, chamar elevador, pegar item à frente |

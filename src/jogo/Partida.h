@@ -102,6 +102,11 @@ private:
     void descer();
     void avisar(std::string texto);
     void receberDano(int bruto, TipoInimigo autor);
+    void cair(int dano);  // ignora a armadura
+    // Coisa no chão nesse ponto está no nível dos pés do jogador (dá para pegar)
+    bool noMesmoNivel(glm::vec2 ponto) const {
+        return std::abs(mundo::alturaDoChao(andar_.grade, ponto) - jogador_.corpo.pes) < mundo::MESMO_NIVEL;
+    }
     void abrirComporta(int x, int y);
     // Sem origem: no máximo um de cada por passo; com origem: todos
     void tocar(Som s, std::optional<glm::vec2> origem = std::nullopt);
@@ -128,7 +133,7 @@ private:
     std::vector<Inimigo> inimigos_;
     std::vector<Projetil> projeteis_;
     std::vector<CoisaNoChao> chao_;
-    std::vector<int> campo_;            // distâncias até o jogador, para a IA
+    std::vector<int> campo_, campoSaltador_;  // distâncias até o jogador, para a IA (andarilhos e ratos)
     float desdeCampo_ = 1e9f;
     bool morto_ = false;
     bool invencivel_ = false;

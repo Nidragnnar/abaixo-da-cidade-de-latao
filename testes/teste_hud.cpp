@@ -98,7 +98,7 @@ TEST_CASE("ícones dos itens depois dos inimigos") {
     CHECK(render::iconeDoItem(jogo::TipoItem::ChaveInglesa) == render::PRIMEIRO_ITEM);
     CHECK(render::iconeDaMunicao(jogo::TipoMunicao::Balas) == render::PRIMEIRO_ITEM + 10);
     CHECK(render::ICONE_ENGRENAGENS == render::PRIMEIRO_ITEM + 13);
-    CHECK(render::TOTAL_SPRITES == render::PRIMEIRO_ITEM + 14);
+    CHECK(render::TOTAL_SPRITES == render::PRIMEIRO_ITEM + 14 + 2);  // + lampião e lustre
 }
 
 TEST_CASE("tela de fim só fala do placar se entrou nele") {

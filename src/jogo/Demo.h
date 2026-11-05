@@ -4,6 +4,7 @@
 #include <glm/vec2.hpp>
 
 #include "jogo/Comandos.h"
+#include "mundo/Terreno.h"
 
 namespace jogo {
 
@@ -20,6 +21,7 @@ private:
     glm::ivec2 alvoDoCampo_{-1, -1};
     int andarDoCampo_ = -1;
     bool trancaDoCampo_ = false;
+    mundo::RegrasPassagem regras_ = mundo::A_PE;  // as do campo atual
     float desdeUsar_ = 1.0f;
     float relogioPreso_ = 0.0f;               // tempo desde a última conferência de movimento
     glm::vec2 posicaoConferida_{-1e9f, -1e9f};

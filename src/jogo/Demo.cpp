@@ -8,6 +8,7 @@
 
 #include "jogo/Partida.h"
 #include "mundo/Consultas.h"
+#include "mundo/Terreno.h"
 
 namespace jogo {
 
@@ -44,7 +45,12 @@ Comandos PilotoDemo::comandar(const Partida& p, float dt) {
     const glm::ivec2 alvo = andar.chave ? glm::ivec2(glm::floor(*andar.chave)) : andar.elevador;
     const bool atravessaTrancada = !andar.chave;
     if (alvo != alvoDoCampo_ || p.trocasDeAndar() != andarDoCampo_ || atravessaTrancada != trancaDoCampo_) {
-        campo_ = mundo::distanciasNaGrade(g, alvo, atravessaTrancada, true);
+        // A pé, sem pular: o mesmo caminho que o gerador garante
+        mundo::RegrasPassagem regras = mundo::A_PE;
+        regras.atravessaTrancada = atravessaTrancada;
+        regras.atravessaElevador = true;
+        regras_ = regras;
+        campo_ = mundo::distanciasComAltura(g, alvo, regras);
         alvoDoCampo_ = alvo;
         andarDoCampo_ = p.trocasDeAndar();
         trancaDoCampo_ = atravessaTrancada;
@@ -63,7 +69,8 @@ Comandos PilotoDemo::comandar(const Partida& p, float dt) {
     } else if (dAqui > 0) {
         for (const glm::ivec2 passo : {glm::ivec2(1, 0), glm::ivec2(-1, 0), glm::ivec2(0, 1), glm::ivec2(0, -1)}) {
             const int d = distancia(aqui + passo);
-            if (d >= 0 && d < dAqui && (proxima == aqui || d < distancia(proxima))) proxima = aqui + passo;
+            if (d < 0 || d >= dAqui || !mundo::podePassar(g, aqui, aqui + passo, regras_)) continue;
+            if (proxima == aqui || d < distancia(proxima)) proxima = aqui + passo;
         }
         destino = glm::vec2(proxima) + 0.5f;
     }

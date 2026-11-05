@@ -15,6 +15,7 @@ Não precisa instalar nada. Para desinstalar, é só apagar a pasta.
 
 CONTROLES
 W A S D ........... andar
+Espaço ............ pular
 Mouse ............. olhar e mirar
 Clique esquerdo ... atacar / atirar
 Q ou roda ......... trocar entre arma branca e arma de fogo
@@ -30,6 +31,9 @@ DICAS
 - Comporta com cadeado precisa da válvula-chave, que está em algum lugar do andar.
 - O elevador leva ao próximo andar. Quanto mais fundo, melhores os itens.
 - Itens em azul são modificados; em dourado, obras-primas.
+- Cair de muito alto machuca: desça pelas escadas e rampas. Pular alcança caixas e
+  plataformas de 1 bloco, e algumas plataformas escondem itens que só se pegam pulando.
+- Ratos mecânicos pulam atrás de você; autômatos e colossos precisam dar a volta pela rampa.
 
 OPÇÕES, PLACAR E PROBLEMAS
 - Sensibilidade do mouse, volumes e tela cheia ficam no menu Opções.

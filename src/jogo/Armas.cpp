@@ -47,13 +47,14 @@ float comBonusPorcento(float base, const Item& arma, TipoBonus t) {
     return base * (1.0f - somaBonus(arma, t) / 100.0f);
 }
 
-void golpear(ResultadoAtaque& r, const Item& arma, const Atributos& atr, glm::vec2 p, float angulo,
+void golpear(ResultadoAtaque& r, const Item& arma, const Atributos& atr, glm::vec2 p, float pes, float angulo,
              const mundo::Grade& g, std::vector<Inimigo>& v, std::mt19937& rng) {
     const DadosArma& d = dadosArma(arma.tipo);
     const glm::vec2 frente{std::cos(angulo), std::sin(angulo)};
     const float cosArco = std::cos(glm::radians(MEIO_ARCO_GRAUS));
     for (Inimigo& i : v) {
         if (i.estado == EstadoInimigo::Destruido) continue;
+        if (std::abs(i.corpo.pes - pes) >= mundo::MESMO_NIVEL) continue;  // um em cima da plataforma, outro embaixo
         const glm::vec2 ate = i.posicao - p;
         const float dist = glm::length(ate);
         if (dist - RAIO_INIMIGO > d.alcance) continue;
@@ -71,15 +72,16 @@ void golpear(ResultadoAtaque& r, const Item& arma, const Atributos& atr, glm::ve
 }
 
 // A mira vertical acerta se passar entre o pé e o topo do inimigo, com uma tolerância de MIRA_VERTICAL_GRAUS
-bool miraVerticalAcerta(float inclinacao, float distancia, float altura) {
+// (pé e topo medidos a partir dos olhos)
+bool miraVerticalAcerta(float inclinacao, float distancia, float pe, float topo) {
     const float tolerancia = glm::radians(MIRA_VERTICAL_GRAUS);
-    const float topo = std::atan2(altura - ALTURA_OLHOS, distancia);
-    const float pe = std::atan2(-ALTURA_OLHOS, distancia);
-    return inclinacao >= pe - tolerancia && inclinacao <= topo + tolerancia;
+    const float anguloTopo = std::atan2(topo, distancia);
+    const float anguloPe = std::atan2(pe, distancia);
+    return inclinacao >= anguloPe - tolerancia && inclinacao <= anguloTopo + tolerancia;
 }
 
 // Um traço instantâneo: o inimigo vivo mais próximo cruzado antes de uma parede (e dentro do alcance, se houver)
-Inimigo* tracar(glm::vec2 p, glm::vec2 d, float inclinacao, float alcance, const mundo::Grade& g,
+Inimigo* tracar(glm::vec2 p, float olhos, glm::vec2 d, float inclinacao, float alcance, const mundo::Grade& g,
                 std::vector<Inimigo>& v, float& distancia) {
     Inimigo* alvo = nullptr;
     float melhorT = std::numeric_limits<float>::max();
@@ -95,8 +97,12 @@ Inimigo* tracar(glm::vec2 p, glm::vec2 d, float inclinacao, float alcance, const
         if (t < 0) t = -b + std::sqrt(delta);  // jogador dentro do círculo
         if (t < 0 || t >= melhorT) continue;
         if (alcance > 0 && t > alcance) continue;
-        if (!miraVerticalAcerta(inclinacao, t, dados(i.tipo).altura)) continue;
-        if (!mundo::temLinhaDeVisao(g, p, p + d * t)) continue;
+        const float pe = i.corpo.pes - olhos, topo = i.corpo.pes + dados(i.tipo).altura - olhos;
+        if (!miraVerticalAcerta(inclinacao, t, pe, topo)) continue;
+        // O raio (preso à altura do inimigo, pela tolerância) não pode bater em parede, chão, degrau ou teto antes
+        const float y = std::clamp(olhos + std::tan(inclinacao) * t, i.corpo.pes, i.corpo.pes + dados(i.tipo).altura);
+        const glm::vec2 ponto = p + d * t;
+        if (!mundo::temLinhaDeVisao3D(g, {p.x, olhos, p.y}, {ponto.x, y, ponto.y})) continue;
         melhorT = t;
         alvo = &i;
     }
@@ -104,14 +110,14 @@ Inimigo* tracar(glm::vec2 p, glm::vec2 d, float inclinacao, float alcance, const
     return alvo;
 }
 
-void disparar(ResultadoAtaque& r, const Item& arma, const Atributos& atr, glm::vec2 p, float angulo, float inclinacao,
+void disparar(ResultadoAtaque& r, const Item& arma, const Atributos& atr, glm::vec2 p, float pes, float angulo, float inclinacao,
               const mundo::Grade& g, std::vector<Inimigo>& v, std::mt19937& rng) {
     const DadosArma& d = dadosArma(arma.tipo);
     for (int k = 0; k < d.chumbos; ++k) {
         const float desvio = glm::radians(mundo::sortearReal(rng, -d.abertura / 2, d.abertura / 2));
         const glm::vec2 direcao{std::cos(angulo + desvio), std::sin(angulo + desvio)};
         float distancia = 0;
-        Inimigo* alvo = tracar(p, direcao, inclinacao, d.alcance, g, v, distancia);
+        Inimigo* alvo = tracar(p, pes + ALTURA_OLHOS, direcao, inclinacao, d.alcance, g, v, distancia);
         if (!alvo) continue;
         int dano = sortearDano(d, arma, atr, rng);
         if (d.chumbos > 1 && distancia > DISTANCIA_QUEDA_CHUMBO) dano = std::max(1, dano / 2);
@@ -144,7 +150,7 @@ int maximoMunicao(TipoMunicao t) {
 int bonusPorChumbo(const DadosArma& d, int extra) { return d.chumbos > 1 ? (extra + 1) / 2 : extra; }
 
 ResultadoAtaque atualizarArmas(Armas& a, Inventario& inv, const Atributos& atr, const Comandos& c, glm::vec2 posicao,
-                               float angulo, float inclinacao, const mundo::Grade& g, std::vector<Inimigo>& inimigos,
+                               float pes, float angulo, float inclinacao, const mundo::Grade& g, std::vector<Inimigo>& inimigos,
                                std::mt19937& rng, float dt) {
     ResultadoAtaque r;
     Item& fogo = inv.armaDeFogo();
@@ -178,7 +184,7 @@ ResultadoAtaque atualizarArmas(Armas& a, Inventario& inv, const Atributos& atr, 
 
     if (a.ativa == ArmaAtiva::Branca) {
         const Item& branca = inv.armaBranca();
-        golpear(r, branca, atr, posicao, angulo, g, inimigos, rng);
+        golpear(r, branca, atr, posicao, pes, angulo, g, inimigos, rng);
         r.golpeou = true;
         a.intervalo = comBonusPorcento(dadosArma(branca.tipo).intervalo, branca, TipoBonus::Velocidade);
         a.animacao = DURACAO_ANIMACAO_ARMA;
@@ -196,7 +202,7 @@ ResultadoAtaque atualizarArmas(Armas& a, Inventario& inv, const Atributos& atr, 
     }
     if (semRecarga) --reserva;
     else --fogo.carga;
-    disparar(r, fogo, atr, posicao, angulo, inclinacao, g, inimigos, rng);
+    disparar(r, fogo, atr, posicao, pes, angulo, inclinacao, g, inimigos, rng);
     a.intervalo = intervalo;
     a.animacao = DURACAO_ANIMACAO_ARMA;
     return r;

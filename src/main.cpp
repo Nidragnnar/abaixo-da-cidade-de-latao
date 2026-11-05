@@ -21,6 +21,7 @@
 #include "jogo/Placar.h"
 #include "jogo/Sons.h"
 #include "mundo/Gerador.h"
+#include "mundo/Terreno.h"
 #include "plataforma/Audio.h"
 #include "plataforma/Caminhos.h"
 #include "plataforma/Entrada.h"
@@ -34,6 +35,7 @@
 #include "render/GeometriaMasmorra.h"
 #include "render/Hud.h"
 #include "render/Icones.h"
+#include "render/Luzes.h"
 #include "render/MalhaGPU.h"
 #include "render/Shader.h"
 #include "render/Sprites.h"
@@ -124,6 +126,28 @@ void descreverAndar(uint32_t semente, int numero) {
     plataforma::logar(std::format("semente {} andar {}: zona {}, {} salas, tranca {}, chave {}, elevador ({}, {})",
                                   semente, numero, nomeZona(a.zona), a.salas.size(), a.chave ? "sim" : "não", chave,
                                   a.elevador.x, a.elevador.y));
+    // Relevo (Etapa 6A): caixas, rampas, chão mais alto e mais baixo, segredos
+    int caixas = 0, rampas = 0, maisAlto = 0, maisBaixo = 99;
+    for (int y = 0; y < a.grade.altura(); ++y)
+        for (int x = 0; x < a.grade.largura(); ++x) {
+            if (a.grade.em(x, y) == mundo::Celula::Parede) continue;
+            caixas += a.grade.detalhe(x, y) == mundo::Detalhe::Caixa;
+            rampas += a.grade.rampa(x, y) != mundo::Rampa::Nenhuma;
+            maisAlto = std::max(maisAlto, a.grade.chao(x, y));
+            maisBaixo = std::min(maisBaixo, a.grade.chao(x, y));
+        }
+    plataforma::logar(std::format("  relevo: chão de {} a {} quartos, {} caixas, {} rampas, {} segredos", maisBaixo, maisAlto,
+                                  caixas, rampas, a.pontosSecretos.size()));
+    for (const glm::vec2 p : a.pontosSecretos) plataforma::logar(std::format("  segredo em ({:.1f}, {:.1f})", p.x, p.y));
+    for (int y = 0; y < a.grade.altura(); ++y)
+        for (int x = 0; x < a.grade.largura(); ++x)
+            if (a.grade.rampa(x, y) != mundo::Rampa::Nenhuma)
+                plataforma::logar(std::format("  rampa em ({}, {}), chão {} quartos", x, y, a.grade.chao(x, y)));
+    for (size_t i = 0; i < a.salas.size(); ++i) {
+        const mundo::Sala& s = a.salas[i];
+        plataforma::logar(std::format("  sala {}: ({}, {}) {}×{}, chão {} no centro", i, s.x, s.y, s.largura, s.altura,
+                                      a.grade.chao(s.centro().x, s.centro().y)));
+    }
     for (const jogo::Inimigo& i : jogo::gerarInimigos(a, semente))
         plataforma::logar(std::format("  {} em ({:.1f}, {:.1f})", jogo::dados(i.tipo).nome, i.posicao.x, i.posicao.y));
     for (const jogo::CoisaNoChao& c : jogo::gerarChao(a, semente)) {
@@ -160,6 +184,8 @@ std::vector<std::filesystem::path> arquivosDeTextura() {
             a.push_back(plataforma::caminhoAsset(std::format("texturas/{}_{}.png", zona, parte)));
     a.push_back(plataforma::caminhoAsset("texturas/comporta.png"));
     a.push_back(plataforma::caminhoAsset("texturas/comporta_trancada.png"));
+    a.push_back(plataforma::caminhoAsset("texturas/caixa.png"));
+    a.push_back(plataforma::caminhoAsset("texturas/degrau.png"));
     return a;
 }
 
@@ -175,6 +201,8 @@ std::vector<std::filesystem::path> arquivosDeSprites() {
     for (const char* item : {"chave_inglesa", "sabre", "martelo", "revolver", "bacamarte", "tesla", "casaco", "colete",
                              "armadura", "tonico", "balas", "cartuchos", "celulas", "engrenagens"})
         a.push_back(plataforma::caminhoAsset(std::format("sprites/item_{}.png", item)));
+    a.push_back(plataforma::caminhoAsset("sprites/lampiao.png"));  // render::SPRITE_LAMPIAO
+    a.push_back(plataforma::caminhoAsset("sprites/lustre.png"));   // render::SPRITE_LUSTRE
     return a;
 }
 
@@ -188,11 +216,11 @@ std::vector<std::filesystem::path> arquivosDeArmas() {
 }
 
 // Camada e tamanho do sprite de algo no chão
-render::Sprite spriteDoChao(const jogo::CoisaNoChao& c) {
+render::Sprite spriteDoChao(const jogo::CoisaNoChao& c, const mundo::Grade& g) {
     int camada = render::ICONE_ENGRENAGENS;
     if (const auto* item = std::get_if<jogo::Item>(&c.conteudo)) camada = render::iconeDoItem(item->tipo);
     else if (const auto* m = std::get_if<jogo::MunicaoNoChao>(&c.conteudo)) camada = render::iconeDaMunicao(m->tipo);
-    return {c.posicao, camada, 0.35f, 0.35f};
+    return {c.posicao, camada, 0.35f, 0.35f, mundo::alturaDoChao(g, c.posicao)};
 }
 
 // O que o HUD mostra, tirado da partida
@@ -343,7 +371,7 @@ int main(int argc, char** argv) {
         const GLuint texturasSprites = render::carregarArrayTexturas(arquivosDeSprites());
         const GLuint texturasArmas = render::carregarArrayTexturas(arquivosDeArmas(), 128);
         const GLuint fonte = render::carregarFonte(plataforma::caminhoAsset("fonte/fonte.png"));
-        render::MalhaGPU malha, malhaComportas, malhaSprites;
+        render::MalhaGPU malha, malhaComportas, malhaSprites, malhaLampioes;
 
         glUseProgram(programa);
         glUniform1i(glGetUniformLocation(programa, "uTexturas"), 0);
@@ -355,6 +383,11 @@ int main(int argc, char** argv) {
         const GLint locLanterna = glGetUniformLocation(programa, "uPosLanterna");
         const GLint locAmbiente = glGetUniformLocation(programa, "uCorAmbiente");
         const GLint locClarao = glGetUniformLocation(programa, "uClarao");
+        const GLint locLuzPos = glGetUniformLocation(programa, "uLuzPos");
+        const GLint locLuzCor = glGetUniformLocation(programa, "uLuzCor");
+        const GLint locNumLuzes = glGetUniformLocation(programa, "uNumLuzes");
+        const GLint locEmissivo = glGetUniformLocation(programa, "uEmissivo");
+        const GLint locLuzAlcance = glGetUniformLocation(programa, "uLuzAlcance");
         // A projeção depende só da imagem pequena, que não muda de tamanho
         glUniformMatrix4fv(locProjecao, 1, GL_FALSE,
                            glm::value_ptr(render::matrizProjecao(static_cast<float>(telaL) / telaA)));
@@ -375,6 +408,7 @@ int main(int argc, char** argv) {
         std::vector<jogo::RegistroPlacar> placarLido;
         jogo::PilotoDemo piloto;
         int passosDemo = 0, capturasDemo = 0;
+        const Uint64 inicioDemo = SDL_GetPerformanceCounter();  // para medir quadros por segundo de verdade
 
         // Remonta o que depende do andar (malha fixa e cor da zona)
         auto prepararAndar = [&] {
@@ -501,6 +535,9 @@ int main(int argc, char** argv) {
             bool fimDaDemo = false;
             if (modoDemo && partida->trocasDeAndar() > 0) {
                 plataforma::logar(std::format("demo: chegou ao elevador em {:.1f} s", passosDemo * passo.passo()));
+                const double real = static_cast<double>(SDL_GetPerformanceCounter() - inicioDemo) / SDL_GetPerformanceFrequency();
+                plataforma::logar(std::format("demo: {} quadros em {:.1f} s ({:.0f} por segundo)", passosDemo, real,
+                                              real > 0 ? passosDemo / real : 0.0));
                 capturarQuadroDemo = fimDaDemo = true;
             } else if (modoDemo && passosDemo * passo.passo() > LIMITE_DEMO) {
                 plataforma::logar(std::format("demo: não chegou ao elevador em {:.0f} s", LIMITE_DEMO));
@@ -557,6 +594,8 @@ int main(int argc, char** argv) {
             const glm::vec2 pos = glm::mix(anterior.posicao, partida->jogador().posicao, alfa);
             const float ang = glm::mix(anterior.angulo, partida->jogador().angulo, alfa);
             const float incl = glm::mix(anterior.inclinacao, partida->jogador().inclinacao, alfa);
+            // Olhos acima dos pés, interpolados como a posição (pulo, queda, rampa)
+            const float olhos = glm::mix(anterior.corpo.pes, partida->jogador().corpo.pes, alfa) + render::ALTURA_OLHOS;
             const ui::Tela tela = menus.tela();
 
             // Cena na imagem pequena
@@ -564,9 +603,29 @@ int main(int argc, char** argv) {
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glUseProgram(programa);
-            glUniformMatrix4fv(locVisao, 1, GL_FALSE, glm::value_ptr(render::matrizVisao(pos, ang, incl)));
-            glUniform3f(locLanterna, pos.x, render::ALTURA_OLHOS, pos.y);
+            glUniformMatrix4fv(locVisao, 1, GL_FALSE, glm::value_ptr(render::matrizVisao(pos, ang, incl, olhos)));
+            glUniform3f(locLanterna, pos.x, olhos, pos.y);
             glUniform1f(locClarao, partida->clarao() > 0.0f ? 1.0f : 0.0f);
+            // Lampiões: os 16 mais perto do olho, com a chama tremendo
+            {
+                const glm::vec3 olho{pos.x, olhos, pos.y};
+                const float segundos = static_cast<float>(SDL_GetTicks()) / 1000.0f;
+                std::vector<glm::vec3> posicoes, cores;
+                std::vector<float> alcances;
+                for (const mundo::Luz& l : render::luzesMaisProximas(partida->andar().luzes, olho)) {
+                    posicoes.push_back(l.posicao);
+                    cores.push_back(l.cor * render::INTENSIDADE_LAMPIAO * render::tremulacao(segundos, l.fase));
+                    alcances.push_back(l.alcance);
+                }
+                const auto quantas = static_cast<GLsizei>(posicoes.size());
+                glUniform1i(locNumLuzes, quantas);
+                if (quantas > 0) {
+                    glUniform3fv(locLuzPos, quantas, glm::value_ptr(posicoes[0]));
+                    glUniform3fv(locLuzCor, quantas, glm::value_ptr(cores[0]));
+                    glUniform1fv(locLuzAlcance, quantas, alcances.data());
+                }
+                glUniform1i(locEmissivo, 0);
+            }
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D_ARRAY, texturas);
             malha.desenhar();
@@ -577,20 +636,32 @@ int main(int argc, char** argv) {
 
             // Sprites: elevador, válvula, coisas no chão, inimigos e projéteis
             std::vector<render::Sprite> sprites;
-            for (const jogo::CoisaNoChao& c : partida->chao()) sprites.push_back(spriteDoChao(c));
-            sprites.push_back({glm::vec2(partida->andar().elevador) + 0.5f, render::SpriteElevador, 0.9f, 1.0f});
+            for (const jogo::CoisaNoChao& c : partida->chao()) sprites.push_back(spriteDoChao(c, partida->andar().grade));
+            const glm::vec2 elevador = glm::vec2(partida->andar().elevador) + 0.5f;
+            sprites.push_back({elevador, render::SpriteElevador, 0.9f, 1.0f, mundo::alturaDoChao(partida->andar().grade, elevador)});
             if (partida->andar().chave)
-                sprites.push_back({*partida->andar().chave, render::SpriteValvulaChave, 0.4f, 0.4f});
+                sprites.push_back({*partida->andar().chave, render::SpriteValvulaChave, 0.4f, 0.4f,
+                                   mundo::alturaDoChao(partida->andar().grade, *partida->andar().chave)});
             for (const jogo::Inimigo& i : partida->inimigos()) {
                 const glm::vec2 tamanho = render::tamanhoDoInimigo(i.tipo);
                 sprites.push_back({i.posicao, render::camadaDoInimigo(i.tipo, i.estado, i.tempoNoEstado), tamanho.x,
-                                   tamanho.y});
+                                   tamanho.y, i.corpo.pes});
             }
             for (const jogo::Projetil& t : partida->projeteis())
-                sprites.push_back({t.posicao, render::SpriteProjetil, 0.15f, 0.15f, 0.42f});
+                sprites.push_back({{t.posicao.x, t.posicao.z}, render::SpriteProjetil, 0.15f, 0.15f, t.posicao.y - 0.075f});
             glBindTexture(GL_TEXTURE_2D_ARRAY, texturasSprites);
             malhaSprites.enviar(render::construirSprites(sprites, pos), true);
             malhaSprites.desenhar();
+            // Lampiões sempre acesos (emissivos)
+            std::vector<render::Sprite> lampioes;
+            for (const mundo::Luz& l : partida->andar().luzes)
+                lampioes.push_back(l.tipo == mundo::TipoLuz::Lustre
+                                       ? render::Sprite{{l.posicao.x, l.posicao.z}, render::SPRITE_LUSTRE, 0.5f, 0.5f, l.posicao.y - 0.15f}
+                                       : render::Sprite{{l.posicao.x, l.posicao.z}, render::SPRITE_LAMPIAO, 0.25f, 0.3f, l.posicao.y - 0.15f});
+            malhaLampioes.enviar(render::construirSprites(lampioes, pos), true);
+            glUniform1i(locEmissivo, 1);
+            malhaLampioes.desenhar();
+            glUniform1i(locEmissivo, 0);
 
             // HUD (arma na mão por baixo, depois barras/flash e texto); só no jogo e na tela de fim
             const bool mostrarHud = !partidaDeFundo && (tela == ui::Tela::Jogo || tela == ui::Tela::Fim);

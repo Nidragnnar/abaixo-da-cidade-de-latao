@@ -39,7 +39,7 @@ jogo::Inventario inventarioCom(jogo::TipoItem branca, jogo::TipoItem fogo) {
 jogo::ResultadoAtaque passo(jogo::Armas& a, jogo::Inventario& inv, const mundo::Andar& andar,
                             std::vector<jogo::Inimigo>& v, std::mt19937& rng, jogo::Comandos c = comando(true),
                             float inclinacao = 0.0f, int nivel = 1) {
-    return jogo::atualizarArmas(a, inv, jogo::calcularAtributos(inv, nivel), c, andar.inicio, 0.0f, inclinacao,
+    return jogo::atualizarArmas(a, inv, jogo::calcularAtributos(inv, nivel), c, andar.inicio, 0.0f, 0.0f, inclinacao,
                                 andar.grade, v, rng, 1.0f / 60);
 }
 
@@ -342,4 +342,57 @@ TEST_CASE("bacamarte: bônus de dano entra pela metade em cada chumbo (arredonda
     const int dano = 40 - v[0].vida;
     CHECK(dano >= 7);
     CHECK(dano <= 7 * 4);  // antes (+4 inteiro em cada chumbo) seriam 28–42
+}
+
+namespace {
+// Passo da arma com os pés numa altura e a posição dada
+jogo::ResultadoAtaque passoEm(jogo::Armas& a, jogo::Inventario& inv, const mundo::Andar& andar, std::vector<jogo::Inimigo>& v,
+                              std::mt19937& rng, glm::vec2 pos, float pes, float inclinacao) {
+    return jogo::atualizarArmas(a, inv, jogo::calcularAtributos(inv, 1), comando(true), pos, pes, 0.0f, inclinacao,
+                                andar.grade, v, rng, 1.0f / 60);
+}
+}
+
+TEST_CASE("tiro de cima acerta inimigo embaixo") {
+    // Jogador numa plataforma de 2 blocos; autômato no chão 4 células à frente
+    auto a = mundo::andarDeTexto({"########", "#@...a.#", "########"}, 1, {"00000000", "08800000", "00000000"},
+                                 {"00000000", "0kkkkkk0", "00000000"});
+    auto v = jogo::inimigosDasMarcas(a);
+    jogo::Inventario inv;
+    auto armas = deFogo();
+    std::mt19937 rng(1);
+    // Da beira (de longe, a própria plataforma barra o tiro para baixo)
+    const auto r = passoEm(armas, inv, a, v, rng, {2.7f, 1.5f}, 2.0f, -0.64f);  // ~37° para baixo
+    CHECK(r.acertos == 1);
+    // Mirando reto, passa por cima
+    auto v2 = jogo::inimigosDasMarcas(a);
+    auto armas2 = deFogo();
+    CHECK(passoEm(armas2, inv, a, v2, rng, {2.7f, 1.5f}, 2.0f, 0.0f).acertos == 0);
+}
+
+TEST_CASE("tiro reto para na caixa do caminho") {
+    auto a = mundo::andarDeTexto({"########", "#@....a#", "########"}, 1, {"00000000", "00040000", "00000000"},
+                                 {"00000000", "08888880", "00000000"});
+    auto v = jogo::inimigosDasMarcas(a);
+    jogo::Inventario inv;
+    auto armas = deFogo();
+    std::mt19937 rng(1);
+    CHECK(passoEm(armas, inv, a, v, rng, {1.5f, 1.5f}, 0.0f, 0.0f).acertos == 0);
+}
+
+TEST_CASE("golpe não alcança quem está 1 bloco abaixo") {
+    // Jogador numa plataforma de 1 bloco; rato colado embaixo, à frente
+    auto a = mundo::andarDeTexto({"######", "#@r..#", "######"}, 1, {"000000", "040000", "000000"},
+                                 {"000000", "088880", "000000"});
+    auto v = jogo::inimigosDasMarcas(a);
+    jogo::Inventario inv;
+    jogo::Armas branca;
+    std::mt19937 rng(1);
+    const auto r = passoEm(branca, inv, a, v, rng, {1.7f, 1.5f}, 1.0f, -0.5f);
+    CHECK(r.golpeou);
+    CHECK(r.acertos == 0);
+    // No mesmo nível, acerta
+    auto v2 = jogo::inimigosDasMarcas(a);
+    jogo::Armas branca2;
+    CHECK(passoEm(branca2, inv, a, v2, rng, {1.7f, 1.5f}, 0.0f, 0.0f).acertos == 1);
 }

@@ -87,12 +87,16 @@ std::vector<Inimigo> gerarInimigos(const mundo::Andar& andar, uint32_t semente) 
         for (int i = 0; i < quantos; ++i, ++sorteados)
             if (auto p = posicaoLivre(sala)) v.push_back(criarInimigo(tipo, *p, andar.numero));
     }
+    for (Inimigo& i : v) i.corpo.pes = mundo::alturaDoChao(andar.grade, i.posicao);  // nascem no chão da célula
     return v;
 }
 
 std::vector<Inimigo> inimigosDasMarcas(const mundo::Andar& andar) {
     std::vector<Inimigo> v;
-    for (const auto& [letra, posicao] : andar.marcas) v.push_back(criarInimigo(tipoDaMarca(letra), posicao, andar.numero));
+    for (const auto& [letra, posicao] : andar.marcas) {
+        v.push_back(criarInimigo(tipoDaMarca(letra), posicao, andar.numero));
+        v.back().corpo.pes = mundo::alturaDoChao(andar.grade, posicao);
+    }
     return v;
 }
 

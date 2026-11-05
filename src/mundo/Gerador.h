@@ -8,6 +8,7 @@
 #include <glm/vec2.hpp>
 
 #include "mundo/Grade.h"
+#include "mundo/Luzes.h"
 #include "mundo/Zona.h"
 
 namespace mundo {
@@ -29,6 +30,8 @@ struct Andar {
     glm::ivec2 elevador;            // célula do elevador de carga
     std::optional<glm::vec2> chave;  // válvula-chave, só em andar com comporta trancada
     std::vector<std::pair<char, glm::vec2>> marcas;  // só em andares de texto (testes)
+    std::vector<Luz> luzes;                          // lampiões (vazio nos andares de texto)
+    std::vector<glm::vec2> pontosSecretos;           // topo de plataformas só alcançáveis pulando (com item)
 };
 
 // Semente própria de cada andar, derivada da semente da partida (permite começar em qualquer andar)
@@ -38,6 +41,7 @@ uint32_t sementeDoAndar(uint32_t sementePartida, int numero);
 Andar gerarAndar(uint32_t sementePartida, int numero);
 
 // Andar a partir de texto (testes); salas vazio, elevador {-1, -1} se não houver 'E'
-Andar andarDeTexto(const std::vector<std::string>& linhas, int numero);
+Andar andarDeTexto(const std::vector<std::string>& linhas, int numero, const std::vector<std::string>& alturas = {},
+                   const std::vector<std::string>& tetos = {});
 
 }

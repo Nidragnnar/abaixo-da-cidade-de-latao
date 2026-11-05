@@ -20,6 +20,8 @@ $escolhas = [ordered]@{
     "minas_teto.png"        = @($tiny, "128x128/Bricks/Brick 23 - 128x128.png")
     "comporta.png"          = @($zortch, "zortchskin/bigdoor.png")
     "comporta_trancada.png" = @($zortch, "zortchskin/bigdoor2.png")
+    "caixa.png"             = @($tiny, "128x128/Wood/Wood 14 - 128x128.png")   # Etapa 6A: caixas
+    "degrau.png"            = @($tiny, "128x128/Bricks/Brick 24 - 128x128.png")  # Etapa 6A: frente dos degraus
 }
 
 foreach ($destino in $escolhas.Keys) {
