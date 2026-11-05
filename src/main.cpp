@@ -673,8 +673,11 @@ int main(int argc, char** argv) {
                 lampioes.push_back(l.tipo == mundo::TipoLuz::Lustre
                                        ? render::Sprite{{l.posicao.x, l.posicao.z}, render::SPRITE_LUSTRE, 0.5f, 0.5f, l.posicao.y - 0.15f}
                                        : render::Sprite{{l.posicao.x, l.posicao.z}, render::SPRITE_LAMPIAO, 0.25f, 0.3f, l.posicao.y - 0.15f});
-            for (const jogo::Explosao& x : partida->explosoes())  // explosões das bombas, acesas como os lampiões
-                lampioes.push_back({{x.posicao.x, x.posicao.z}, render::SPRITE_EXPLOSAO, 1.0f, 1.0f, x.posicao.y - 0.5f});
+            for (const jogo::Explosao& x : partida->explosoes()) {  // explosões das bombas, acesas como os lampiões
+                const glm::vec2 onde{x.posicao.x, x.posicao.z};
+                const float base = std::max(x.posicao.y - 0.5f, mundo::alturaDoChao(partida->andar().grade, onde));
+                lampioes.push_back({onde, render::SPRITE_EXPLOSAO, 1.0f, 1.0f, base});  // nunca enterrada no chão
+            }
             malhaLampioes.enviar(render::construirSprites(lampioes, pos), true);
             glUniform1i(locEmissivo, 1);
             malhaLampioes.desenhar();

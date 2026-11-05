@@ -134,11 +134,8 @@ void atualizarVespa(Inimigo& i, const MundoIA& m, EventosIA& e, bool ve, float d
     const DadosInimigo& d = dados(i.tipo);
     const glm::vec2 plano = m.jogador - i.posicao;
     switch (i.estado) {
-        case EstadoInimigo::Parado:  // percebeu: avisa com o som do voo
-            if (ve) {
-                mudar(i, EstadoInimigo::Perseguindo);
-                e.alertas.push_back({i.tipo, i.posicao});
-            }
+        case EstadoInimigo::Parado:
+            if (ve) mudar(i, EstadoInimigo::Perseguindo);
             break;
         case EstadoInimigo::Perseguindo:
             if (ve && glm::length(plano) <= DISTANCIA_MERGULHO) mudar(i, EstadoInimigo::Preparando);
@@ -165,16 +162,14 @@ void atualizarVespa(Inimigo& i, const MundoIA& m, EventosIA& e, bool ve, float d
 // (a recuperação), sem parar de segui-lo
 void atualizarDirigivel(Inimigo& i, const MundoIA& m, EventosIA& e, bool ve, float dt) {
     switch (i.estado) {
-        case EstadoInimigo::Parado:  // percebeu: avisa com o som do voo
-            if (ve) {
-                mudar(i, EstadoInimigo::Perseguindo);
-                e.alertas.push_back({i.tipo, i.posicao});
-            }
+        case EstadoInimigo::Parado:
+            if (ve) mudar(i, EstadoInimigo::Perseguindo);
             break;
         case EstadoInimigo::Perseguindo:
         case EstadoInimigo::Preparando:
             aproximar(i, m, e, ve, dt);
-            if (ve && glm::distance(i.posicao, m.jogador) <= ALCANCE_BOMBA) {
+            if (ve && glm::distance(i.posicao, m.jogador) <= ALCANCE_BOMBA &&
+                i.corpo.pes >= m.pesJogador + ALTURA_MINIMA_BOMBA) {  // rente ao chão (corredor baixo) só segue
                 Projetil b{{i.posicao.x, i.corpo.pes, i.posicao.y}, glm::vec3(0.0f),
                            mundo::sortear(m.rng, i.danoMin, i.danoMax), i.tipo};
                 b.gravidade = GRAVIDADE_BOMBA;
@@ -229,7 +224,7 @@ EventosIA atualizarInimigos(std::vector<Inimigo>& v, const MundoIA& m, float dt)
     for (Inimigo& i : v) {
         i.tempoNoEstado += dt;
         if (i.estado == EstadoInimigo::Destruido) {
-            if (voa(i)) mundo::atualizarVertical(i.corpo, m.grade, i.posicao, RAIO_INIMIGO, dt);  // destroços caem
+            if (voa(i)) mundo::atualizarVertical(i.corpo, m.grade, i.posicao, RAIO_INIMIGO, dt, alturaColisao(i));  // destroços caem
             continue;
         }
         const DadosInimigo& d = dados(i.tipo);
@@ -287,6 +282,11 @@ EventosIA atualizarInimigos(std::vector<Inimigo>& v, const MundoIA& m, float dt)
                 if (i.tempoNoEstado >= d.recuperacao) mudar(i, EstadoInimigo::Perseguindo);
                 break;
             case EstadoInimigo::Destruido: break;
+        }
+        // Voador acordado (por ver, por barulho ou por golpe): avisa uma vez com o som do voo
+        if (voa(i) && !i.alertou && i.estado != EstadoInimigo::Parado) {
+            e.alertas.push_back({i.tipo, i.posicao});
+            i.alertou = true;
         }
         if (voa(i)) voar(i, m, dt);
         else mundo::atualizarVertical(i.corpo, m.grade, i.posicao, RAIO_INIMIGO, dt);  // inimigos não levam dano de queda

@@ -46,7 +46,9 @@ struct CorpoVertical {
 float chaoSobCorpo(const Grade& g, glm::vec2 posicao, float raio);
 
 // Gravidade, chão (degrau e rampa grudam os pés), teto; devolve a queda em blocos ao pousar (0 se não pousou)
-float atualizarVertical(CorpoVertical& c, const Grade& g, glm::vec2 posicao, float raio, float dt);
+// (alturaCorpo: o teto barra a cabeça; os destroços do voador são mais baixos que o jogador)
+float atualizarVertical(CorpoVertical& c, const Grade& g, glm::vec2 posicao, float raio, float dt,
+                        float alturaCorpo = ALTURA_CORPO);
 
 // Até 2 blocos, nada; depois 5 por meio bloco a mais (arredondando para baixo)
 int danoDeQueda(float blocos);

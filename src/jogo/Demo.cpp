@@ -99,6 +99,7 @@ Comandos PilotoDemo::comandar(const Partida& p, float dt) {
         if (i.estado == EstadoInimigo::Destruido) continue;
         const glm::vec2 d = i.posicao - pos;
         if (glm::length(d) > ALCANCE_ATAQUE) continue;
+        if (std::abs(i.corpo.pes - p.jogador().corpo.pes) >= mundo::MESMO_NIVEL) continue;  // voador no alto: não alcança
         if (std::abs(diferenca(std::atan2(d.y, d.x), angulo)) > ARCO_ATAQUE) continue;
         if (!mundo::temLinhaDeVisao(g, pos, i.posicao)) continue;
         c.atacar = true;

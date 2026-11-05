@@ -44,6 +44,7 @@ struct Inimigo {
     float tempoNoEstado = 0;
     glm::vec2 empurrao{0.0f};  // aplicado (e zerado) no próximo passo da IA
     bool recompensado = false;  // destruído e já contado (XP e o que caiu no chão)
+    bool alertou = false;       // voador: o som do voo já avisou que ele vem
     mundo::CorpoVertical corpo;  // altura dos pés (segue o terreno; sem dano de queda)
 };
 

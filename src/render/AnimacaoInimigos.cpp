@@ -6,6 +6,8 @@ namespace render {
 
 int camadaDoInimigo(jogo::TipoInimigo t, jogo::EstadoInimigo e, float tempoNoEstado) {
     const int base = PRIMEIRO_INIMIGO + static_cast<int>(t) * QUADROS_POR_INIMIGO;
+    // O dirigível segue voando enquanto recarrega a bomba: a hélice continua girando
+    if (t == jogo::TipoInimigo::Dirigivel && e == jogo::EstadoInimigo::Recuperando) e = jogo::EstadoInimigo::Perseguindo;
     switch (e) {
         case jogo::EstadoInimigo::Perseguindo:
             return base + 1 + static_cast<int>(std::floor(tempoNoEstado / 0.25f)) % 2;

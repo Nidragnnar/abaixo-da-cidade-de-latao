@@ -18,6 +18,7 @@ constexpr float GRAVIDADE_BOMBA = 9.0f;   // blocos/s²
 constexpr float RAIO_BOMBA = 1.0f;        // dano cheio no centro, nada a partir daqui
 constexpr float INTERVALO_BOMBA = 2.5f;   // segundos entre bombas (a recuperação do dirigível)
 constexpr float ALCANCE_BOMBA = 2.0f;     // distância horizontal em que o dirigível solta
+constexpr float ALTURA_MINIMA_BOMBA = 1.0f;  // acima dos pés do jogador: mais baixo a bomba não dá tempo de fugir
 
 struct Projetil {
     glm::vec3 posicao;    // (x, altura, z)

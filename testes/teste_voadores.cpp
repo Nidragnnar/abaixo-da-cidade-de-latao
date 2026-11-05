@@ -245,3 +245,47 @@ TEST_CASE("pilha de caixas numa sala baixa não prende o voador no teto") {
     const auto e = simularVoo(v, a.grade, a.inicio, 0.0f, 6.0f, [&](const auto& vs) { conferirAltura(vs, a.grade); });
     CHECK_FALSE(e.golpes.empty());
 }
+
+TEST_CASE("voador acordado por barulho avisa uma vez") {
+    // Parede no meio: ele não vê o jogador, mas o barulho o acorda
+    auto a = mundo::andarDeTexto({"#######", "#@.#.d#", "#.....#", "#######"}, 3);
+    auto v = jogo::inimigosDasMarcas(a);
+    jogo::acordarPorBarulho(v, a.inicio, 20.0f);
+    std::mt19937 rng(1);
+    const auto campo = mundo::distanciasComAltura(a.grade, glm::ivec2(a.inicio), mundo::ANDARILHO);
+    const auto voador = mundo::distanciasComAltura(a.grade, glm::ivec2(a.inicio), mundo::VOADOR);
+    jogo::MundoIA m{a.grade, a.inicio, campo, rng};
+    m.campoVoador = &voador;
+    auto e = jogo::atualizarInimigos(v, m, 1.0f / 60);
+    REQUIRE(e.alertas.size() == 1);
+    CHECK(e.alertas[0].tipo == jogo::TipoInimigo::Dirigivel);
+    CHECK(jogo::atualizarInimigos(v, m, 1.0f / 60).alertas.empty());
+}
+
+TEST_CASE("voador que vê o jogador avisa uma vez") {
+    auto a = mundo::andarDeTexto({"#######", "#@...v#", "#######"}, 2);
+    auto v = jogo::inimigosDasMarcas(a);
+    std::mt19937 rng(1);
+    const auto campo = mundo::distanciasComAltura(a.grade, glm::ivec2(a.inicio), mundo::ANDARILHO);
+    jogo::MundoIA m{a.grade, a.inicio, campo, rng};
+    m.campoVoador = &campo;
+    REQUIRE(jogo::atualizarInimigos(v, m, 1.0f / 60).alertas.size() == 1);
+    CHECK(jogo::atualizarInimigos(v, m, 1.0f / 60).alertas.empty());
+}
+
+TEST_CASE("vespa destruída rente ao teto não salta para baixo") {
+    auto a = mundo::andarDeTexto({"#####", "#@..#", "#####"}, 2);  // teto 1 bloco
+    auto v = std::vector{jogo::criarInimigo(jogo::TipoInimigo::Vespa, {3.5f, 1.5f}, 2)};
+    v[0].corpo.pes = 1.0f - 0.3f - jogo::FOLGA_VOO;
+    v[0].estado = jogo::EstadoInimigo::Destruido;
+    simularVoo(v, a.grade, a.inicio, 0.0f, 1.0f / 60);
+    CHECK(v[0].corpo.pes > 0.55f);
+}
+
+TEST_CASE("dirigível rente ao chão não solta bomba") {
+    // Corredor com teto 1,25: o dirigível voa baixo e a bomba não daria tempo de fugir
+    auto a = mundo::andarDeTexto({"#######", "#@.d..#", "#######"}, 3, {}, {"0000000", "0555550", "0000000"});
+    auto v = jogo::inimigosDasMarcas(a);
+    jogo::acordarPorBarulho(v, a.inicio, 20.0f);
+    CHECK(simularVoo(v, a.grade, a.inicio, 0.0f, 3.0f).tiros.empty());
+}

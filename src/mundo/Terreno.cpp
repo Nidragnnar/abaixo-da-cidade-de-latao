@@ -64,7 +64,7 @@ float chaoSobCorpo(const Grade& g, glm::vec2 posicao, float raio) {
     return h;
 }
 
-float atualizarVertical(CorpoVertical& c, const Grade& g, glm::vec2 posicao, float raio, float dt) {
+float atualizarVertical(CorpoVertical& c, const Grade& g, glm::vec2 posicao, float raio, float dt, float alturaCorpo) {
     const float chao = chaoSobCorpo(g, posicao, raio);
     float teto = alturaDoTeto(g, posicao);
     for (const glm::vec2 canto : {glm::vec2(-raio, -raio), glm::vec2(raio, -raio), glm::vec2(-raio, raio), glm::vec2(raio, raio)})
@@ -88,8 +88,8 @@ float atualizarVertical(CorpoVertical& c, const Grade& g, glm::vec2 posicao, flo
     c.velocidade -= GRAVIDADE * dt;
     c.pes += c.velocidade * dt;
     c.maisAlto = std::max(c.maisAlto, c.pes);
-    if (c.pes + ALTURA_CORPO > teto) {  // cabeça no teto
-        c.pes = teto - ALTURA_CORPO;
+    if (c.pes + alturaCorpo > teto) {  // cabeça no teto
+        c.pes = teto - alturaCorpo;
         c.velocidade = std::min(c.velocidade, 0.0f);
     }
     if (c.pes <= chao) {
