@@ -33,6 +33,9 @@ $receita = [ordered]@{
     "nivel"             = @("$kf\confirmation_002.ogg", 0, 0.6, 0.45, 0.1)
     "menu_mover"        = @("$kf\tick_004.ogg", 0, 0.1, 0.3, 0.02)
     "menu_confirmar"    = @("$kf\select_002.ogg", 0, 0.1, 0.35, 0.02)
+    "zumbido"           = @("sintetico:zumbido.wav", 0, 0.6, 0.35, 0.15)
+    "motor"             = @("sintetico:motor.wav", 0, 0.9, 0.4, 0.3)
+    "explosao"          = @("sintetico:explosao.wav", 0, 0.8, 0.7, 0.3)
 }
 $musica = "oga_factory_ambiance\Factory.ogg"
 

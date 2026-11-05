@@ -18,7 +18,10 @@ int camadaDoInimigo(jogo::TipoInimigo t, jogo::EstadoInimigo e, float tempoNoEst
 
 glm::vec2 tamanhoDoInimigo(jogo::TipoInimigo t) {
     // A altura vem da tabela do jogo (a mesma que a mira vertical usa)
-    const float largura = t == jogo::TipoInimigo::Rato ? 0.4f : t == jogo::TipoInimigo::Colosso ? 0.9f : 0.6f;
+    using jogo::TipoInimigo;
+    const float largura = t == TipoInimigo::Rato || t == TipoInimigo::Vespa           ? 0.4f
+                          : t == TipoInimigo::Colosso || t == TipoInimigo::Dirigivel ? 0.9f
+                                                                                       : 0.6f;
     return {largura, jogo::dados(t).altura};
 }
 

@@ -55,6 +55,10 @@ PROVISÓRIOS, feitos para este jogo por ferramentas/gerar_lampiao.ps1 (sem licen
   sprites/lampiao.png   lampião de parede
   sprites/lustre.png    lustre de teto
 
+PROVISÓRIOS, feitos para este jogo por ferramentas/gerar_voadores.ps1 (sem licença de terceiros):
+  sprites/vespa_0..6.png, dirigivel_0..6.png   vespa a corda e dirigível a vapor
+  sprites/bomba.png, explosao.png              bomba do dirigível e explosão
+
 Sons e música (todos CC0; os pacotes originais ficam em arte_fonte/sons/, fora do jogo distribuído;
 escolhidos e preparados por ferramentas/preparar_sons.ps1)
 Impact Sounds 1.0 — Kenney — CC0 — https://kenney.nl/assets/impact-sounds
@@ -78,3 +82,4 @@ Factory Ambiance — yd — CC0 — https://opengameart.org/content/factory-ambi
 Alteração nos efeitos: trecho cortado, mixado em mono, volume ajustado e fim suavizado por ferramentas/cortar_som.cpp.
 Feito para este jogo por ferramentas/gerar_sons.cpp (sem licença de terceiros; escolhido de ouvido):
   sons/disparo_revolver.wav  disparo sintetizado
+  sons/zumbido.wav  vespa   sons/motor.wav  dirigível   sons/explosao.wav  bomba (provisórios)

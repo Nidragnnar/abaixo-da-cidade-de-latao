@@ -27,6 +27,7 @@ struct RegrasPassagem {
 constexpr RegrasPassagem A_PE{1, 8, false, false};       // caminho obrigatório: sem pulo nem queda com dano
 constexpr RegrasPassagem ANDARILHO{1, 99, false, false};  // autômatos, atiradores e colossos
 constexpr RegrasPassagem SALTADOR{4, 99, false, false};   // ratos sobem 1 bloco pulando
+constexpr RegrasPassagem VOADOR{99, 99, false, false};    // vespas e dirigíveis: a altura do chão não importa
 
 // --- Física vertical (jogador e inimigos) ---
 constexpr float GRAVIDADE = 24.0f;        // blocos/s²

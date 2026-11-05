@@ -17,15 +17,16 @@ constexpr float FOLGA = 0.001f;  // afasta da parede para o próximo teste não 
 
 // Célula que a caixa não pode ocupar: parede, comporta fechada, elevador, chão alto demais ou teto baixo demais
 // (na rampa, o chão no ponto da caixa mais perto dela)
-bool bloqueia(const Grade& g, int x, int y, glm::vec2 centro, float pes, float subida) {
+bool bloqueia(const Grade& g, int x, int y, glm::vec2 centro, float pes, float subida, float alturaCorpo) {
     if (g.bloqueiaPassagem(x, y)) return true;
     const glm::vec2 perto = glm::clamp(centro, glm::vec2(x, y), glm::vec2(x + 1, y + 1) - 1e-4f);
     if (alturaDoChao(g, perto) > pes + subida + 1e-3f) return true;
-    return alturaDoTeto(g, perto) < pes + ALTURA_CORPO - 1e-3f;
+    return alturaDoTeto(g, perto) < pes + alturaCorpo - 1e-3f;
 }
 
 // Move só num eixo (0 = X, 1 = Y) e encosta na primeira célula sólida tocada
-void moverEixo(const Grade& grade, glm::vec2& p, float delta, int eixo, float raio, float pes, float subida) {
+void moverEixo(const Grade& grade, glm::vec2& p, float delta, int eixo, float raio, float pes, float subida,
+               float alturaCorpo) {
     if (delta == 0.0f) return;
     glm::vec2 novo = p;
     novo[eixo] += delta;
@@ -53,7 +54,7 @@ void moverEixo(const Grade& grade, glm::vec2& p, float delta, int eixo, float ra
     int limite = delta > 0 ? std::numeric_limits<int>::max() : std::numeric_limits<int>::min();
     for (int y = y0; y <= y1; ++y)
         for (int x = x0; x <= x1; ++x)
-            if (jaOcupava(x, y) ? grade.bloqueiaPassagem(x, y) : bloqueia(grade, x, y, novo, referencia, subida)) {
+            if (jaOcupava(x, y) ? grade.bloqueiaPassagem(x, y) : bloqueia(grade, x, y, novo, referencia, subida, alturaCorpo)) {
                 const int c = eixo == 0 ? x : y;
                 limite = delta > 0 ? std::min(limite, c) : std::max(limite, c);
                 bateu = true;
@@ -66,14 +67,14 @@ void moverEixo(const Grade& grade, glm::vec2& p, float delta, int eixo, float ra
 }
 
 glm::vec2 moverComColisao(const Grade& grade, glm::vec2 posicao, glm::vec2 deslocamento, float raio, float pes,
-                          float subida) {
+                          float subida, float alturaCorpo) {
     const float distancia = glm::length(deslocamento);
     if (distancia == 0.0f) return posicao;
     const int subpassos = std::max(1, static_cast<int>(std::ceil(distancia / raio)));
     const glm::vec2 parte = deslocamento / static_cast<float>(subpassos);
     for (int i = 0; i < subpassos; ++i) {
-        moverEixo(grade, posicao, parte.x, 0, raio, pes, subida);
-        moverEixo(grade, posicao, parte.y, 1, raio, pes, subida);
+        moverEixo(grade, posicao, parte.x, 0, raio, pes, subida, alturaCorpo);
+        moverEixo(grade, posicao, parte.y, 1, raio, pes, subida, alturaCorpo);
     }
     return posicao;
 }

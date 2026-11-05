@@ -34,7 +34,7 @@ O guia completo, com controles e dicas, vai junto no zip: `COMO_JOGAR.txt`.
 - Masmorra procedural por semente, com 3 zonas (esgoto, fábrica, minas), desníveis (escadas, rampas, plataformas,
   poços e caixas), lampiões, comportas, comporta trancada com
   válvula-chave e elevador para o próximo andar.
-- 4 tipos de inimigo, combate meio a meio entre armas brancas (chave inglesa, sabre, martelo a vapor) e armas de
+- 6 tipos de inimigo, entre eles a vespa a corda e o dirigível a vapor, que voam e atacam de cima; combate meio a meio entre armas brancas (chave inglesa, sabre, martelo a vapor) e armas de
   fogo (revólver, bacamarte, pistola Tesla), munição escassa por tipo.
 - Itens com qualidade (comum, modificada, obra-prima) e bônus, armaduras, tônicos, inventário com mouse,
   XP e níveis.

@@ -72,6 +72,8 @@ struct Opcoes {
     std::optional<uint32_t> demo;        // --demo <semente>: anda sozinho até o elevador tirando capturas
     bool mudo = false;                   // --mudo: não abre o áudio
     std::string tela;                    // --tela principal|opcoes|placar|pausa: abre essa tela (capturas)
+    // --inimigo <letra> <x> <z> (repetível): põe mais um inimigo no andar inicial (letras dos mapas de teste)
+    std::vector<std::pair<char, glm::vec2>> inimigos;
 
     // Começa direto na partida, sem o menu (cenários de teste e roteiros)
     bool direto() const {
@@ -101,6 +103,11 @@ Opcoes lerOpcoes(int argc, char** argv) {
         else if (arg == "--demo" && temValor) o.demo = static_cast<uint32_t>(std::stoul(argv[++i]));
         else if (arg == "--mudo") o.mudo = true;
         else if (arg == "--tela" && temValor) o.tela = argv[++i];
+        else if (arg == "--inimigo" && i + 3 < argc) {
+            const char letra = argv[++i][0];
+            const float x = std::stof(argv[++i]);
+            o.inimigos.push_back({letra, glm::vec2(x, std::stof(argv[++i]))});
+        }
         else if (arg == "--posicao" && i + 2 < argc) {
             const float x = std::stof(argv[++i]);
             o.posicao = glm::vec2(x, std::stof(argv[++i]));
@@ -194,7 +201,7 @@ std::vector<std::filesystem::path> arquivosDeSprites() {
     std::vector<std::filesystem::path> a{plataforma::caminhoAsset("sprites/valvula_chave.png"),
                                          plataforma::caminhoAsset("sprites/elevador.png"),
                                          plataforma::caminhoAsset("sprites/projetil.png")};
-    for (const char* inimigo : {"rato", "automato", "atirador", "colosso"})
+    for (const char* inimigo : {"rato", "automato", "atirador", "colosso", "vespa", "dirigivel"})
         for (int q = 0; q < render::QUADROS_POR_INIMIGO; ++q)
             a.push_back(plataforma::caminhoAsset(std::format("sprites/{}_{}.png", inimigo, q)));
     // Itens, munição e engrenagens (render/Icones.h)
@@ -203,6 +210,8 @@ std::vector<std::filesystem::path> arquivosDeSprites() {
         a.push_back(plataforma::caminhoAsset(std::format("sprites/item_{}.png", item)));
     a.push_back(plataforma::caminhoAsset("sprites/lampiao.png"));  // render::SPRITE_LAMPIAO
     a.push_back(plataforma::caminhoAsset("sprites/lustre.png"));   // render::SPRITE_LUSTRE
+    a.push_back(plataforma::caminhoAsset("sprites/bomba.png"));    // render::SPRITE_BOMBA
+    a.push_back(plataforma::caminhoAsset("sprites/explosao.png")); // render::SPRITE_EXPLOSAO
     return a;
 }
 
@@ -450,6 +459,7 @@ int main(int argc, char** argv) {
             partida->definirAngulo(glm::radians(opcoes.anguloGraus));
             partida->definirInclinacao(glm::radians(opcoes.inclinacaoGraus));
             if (opcoes.posicao) partida->definirPosicao(*opcoes.posicao);
+            for (const auto& [letra, onde] : opcoes.inimigos) partida->acrescentarInimigo(jogo::tipoDaMarca(letra), onde);
             anterior = partida->jogador();
             menus.abrir(ui::Tela::Jogo);
             if (opcoes.inventario) entrada.abrirInventario(true);
@@ -647,8 +657,13 @@ int main(int argc, char** argv) {
                 sprites.push_back({i.posicao, render::camadaDoInimigo(i.tipo, i.estado, i.tempoNoEstado), tamanho.x,
                                    tamanho.y, i.corpo.pes});
             }
-            for (const jogo::Projetil& t : partida->projeteis())
-                sprites.push_back({{t.posicao.x, t.posicao.z}, render::SpriteProjetil, 0.15f, 0.15f, t.posicao.y - 0.075f});
+            for (const jogo::Projetil& t : partida->projeteis()) {
+                if (t.raioExplosao == 0) {
+                    sprites.push_back({{t.posicao.x, t.posicao.z}, render::SpriteProjetil, 0.15f, 0.15f, t.posicao.y - 0.075f});
+                } else if (std::fmod(SDL_GetTicks() / 1000.0f, 0.2f) < 0.1f) {  // a bomba pisca enquanto cai
+                    sprites.push_back({{t.posicao.x, t.posicao.z}, render::SPRITE_BOMBA, 0.25f, 0.25f, t.posicao.y - 0.125f});
+                }
+            }
             glBindTexture(GL_TEXTURE_2D_ARRAY, texturasSprites);
             malhaSprites.enviar(render::construirSprites(sprites, pos), true);
             malhaSprites.desenhar();
@@ -658,6 +673,8 @@ int main(int argc, char** argv) {
                 lampioes.push_back(l.tipo == mundo::TipoLuz::Lustre
                                        ? render::Sprite{{l.posicao.x, l.posicao.z}, render::SPRITE_LUSTRE, 0.5f, 0.5f, l.posicao.y - 0.15f}
                                        : render::Sprite{{l.posicao.x, l.posicao.z}, render::SPRITE_LAMPIAO, 0.25f, 0.3f, l.posicao.y - 0.15f});
+            for (const jogo::Explosao& x : partida->explosoes())  // explosões das bombas, acesas como os lampiões
+                lampioes.push_back({{x.posicao.x, x.posicao.z}, render::SPRITE_EXPLOSAO, 1.0f, 1.0f, x.posicao.y - 0.5f});
             malhaLampioes.enviar(render::construirSprites(lampioes, pos), true);
             glUniform1i(locEmissivo, 1);
             malhaLampioes.desenhar();

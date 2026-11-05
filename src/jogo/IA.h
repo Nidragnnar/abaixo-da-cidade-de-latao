@@ -19,6 +19,15 @@ constexpr float RAIO_INIMIGO = 0.25f;
 constexpr float TEMPO_DESTROCOS = 10.0f;
 constexpr float DISTANCIA_MIN_ATIRADOR = 3.0f, DISTANCIA_MAX_ATIRADOR = 6.0f;
 
+// Voadores: sobem e descem até a altura do estado, sempre entre o chão e o teto da vizinhança
+constexpr float VELOCIDADE_VERTICAL_VOO = 2.5f;  // blocos por segundo
+constexpr float VELOCIDADE_MERGULHO = 4.0f;      // a vespa desce até o peito durante o preparo (0,3 s)
+constexpr float FOLGA_VOO = 0.1f;                // distância mínima do chão e do teto
+constexpr float ALTURA_VOO_VESPA = 1.2f;         // acima dos pés do jogador
+constexpr float ALTURA_PEITO = 0.3f;             // o mergulho desce os pés da vespa até aqui (acima dos pés do jogador)
+constexpr float DISTANCIA_MERGULHO = 1.5f;       // horizontal
+constexpr float DESCIDA_DIRIGIVEL = 1.2f;        // pés do dirigível abaixo do teto
+
 struct MundoIA {
     mundo::Grade& grade;
     glm::vec2 jogador;
@@ -27,9 +36,17 @@ struct MundoIA {
     float raioJogador = 0.25f;  // inimigos não entram no jogador
     const std::vector<int>* campoSaltador = nullptr;  // campo dos ratos (sobem 1 bloco); sem ele, usam `campo`
     float pesJogador = 0.0f;
+    const std::vector<int>* campoVoador = nullptr;  // distanciasComAltura(..., VOADOR); sem ele, usam `campo`
+};
+
+// Voador que acabou de perceber o jogador (zumbido da vespa, motor do dirigível)
+struct Alerta {
+    TipoInimigo tipo;
+    glm::vec2 posicao;
 };
 
 struct EventosIA {
+    std::vector<Alerta> alertas;
     std::vector<Golpe> golpes;  // um por acerto, na ordem (a defesa vale para cada um)
     std::vector<glm::ivec2> comportasParaAbrir;
     std::vector<Projetil> tiros;

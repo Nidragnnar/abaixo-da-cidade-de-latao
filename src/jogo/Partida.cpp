@@ -58,6 +58,12 @@ void Partida::tocar(Som s, std::optional<glm::vec2> origem) {
     sons_.push_back({s, origem});
 }
 
+void Partida::acrescentarInimigo(TipoInimigo tipo, glm::vec2 posicao) {
+    inimigos_.push_back(criarInimigo(tipo, posicao, andar_.numero));
+    inimigos_.back().corpo.pes = mundo::alturaDoChao(andar_.grade, posicao);
+    desdeCampo_ = 1e9f;  // recalcula os campos (o voador precisa do seu) no próximo passo
+}
+
 void Partida::abrirComporta(int x, int y) {
     // Se já está abrindo, continua de onde está (e não toca de novo)
     if (abrindo_.try_emplace(indice(x, y), 0.0f).second) tocar(Som::Comporta, glm::vec2(x + 0.5f, y + 0.5f));
@@ -213,6 +219,8 @@ void Partida::descer() {
     // Vida, armas, inventário e nível continuam; inimigos, tiros e chão são do andar
     inimigos_ = gerarInimigos(andar_, semente_);
     projeteis_.clear();
+    explosoes_.clear();
+    campoVoador_.clear();
     chao_ = gerarChao(andar_, semente_);
     desdeCampo_ = 1e9f;
     ++trocasDeAndar_;
@@ -253,6 +261,10 @@ void Partida::atualizar(const Comandos& c, float dt) {
     // O jogador não atravessa inimigos vivos: é empurrado para fora de quem estiver colado nele
     for (const Inimigo& i : inimigos_) {
         if (i.estado == EstadoInimigo::Destruido) continue;
+        // Só empurra quem divide a altura com o corpo do jogador (o voador lá em cima passa por cima)
+        if (i.corpo.pes >= jogador_.corpo.pes + mundo::ALTURA_CORPO ||
+            i.corpo.pes + dados(i.tipo).altura <= jogador_.corpo.pes)
+            continue;
         glm::vec2 d = jogador_.posicao - i.posicao;
         const float dist = glm::length(d);
         const float minimo = RAIO_JOGADOR + RAIO_INIMIGO;
@@ -296,19 +308,35 @@ void Partida::atualizar(const Comandos& c, float dt) {
         const glm::ivec2 celula(glm::floor(jogador_.posicao));
         campo_ = mundo::distanciasComAltura(andar_.grade, celula, mundo::ANDARILHO);
         campoSaltador_ = mundo::distanciasComAltura(andar_.grade, celula, mundo::SALTADOR);
+        const bool temVoador = std::any_of(inimigos_.begin(), inimigos_.end(), [](const Inimigo& i) {
+            return dados(i.tipo).voa && i.estado != EstadoInimigo::Destruido;
+        });
+        if (temVoador) campoVoador_ = mundo::distanciasComAltura(andar_.grade, celula, mundo::VOADOR);
+        else campoVoador_.clear();
         desdeCampo_ = 0.0f;
     }
 
-    // Inimigos e seus tiros
-    EventosIA eventos = atualizarInimigos(
-        inimigos_, {andar_.grade, jogador_.posicao, campo_, rng_, RAIO_JOGADOR, &campoSaltador_, jogador_.corpo.pes}, dt);
+    // Inimigos e seus tiros (bombas caem sem som; o som é o da explosão)
+    MundoIA mundoIA{andar_.grade, jogador_.posicao, campo_, rng_, RAIO_JOGADOR, &campoSaltador_, jogador_.corpo.pes};
+    if (!campoVoador_.empty()) mundoIA.campoVoador = &campoVoador_;
+    EventosIA eventos = atualizarInimigos(inimigos_, mundoIA, dt);
     for (const glm::ivec2& c2 : eventos.comportasParaAbrir) abrirComporta(c2.x, c2.y);
-    for (const Projetil& t : eventos.tiros) tocar(Som::TiroInimigo, glm::vec2(t.posicao.x, t.posicao.z));
+    for (const Alerta& a : eventos.alertas) tocar(a.tipo == TipoInimigo::Vespa ? Som::Zumbido : Som::Motor, a.posicao);
+    for (const Projetil& t : eventos.tiros)
+        if (t.raioExplosao == 0) tocar(Som::TiroInimigo, glm::vec2(t.posicao.x, t.posicao.z));
     projeteis_.insert(projeteis_.end(), eventos.tiros.begin(), eventos.tiros.end());
     for (const Golpe& g : eventos.golpes) receberDano(g.dano, g.autor);
     const glm::vec3 centro{jogador_.posicao.x, jogador_.corpo.pes + mundo::ALTURA_CORPO / 2, jogador_.posicao.y};
     const ResultadoProjeteis tiros = atualizarProjeteis(projeteis_, andar_.grade, centro, RAIO_JOGADOR, dt);
     for (const Golpe& g : tiros.golpes) receberDano(g.dano, g.autor);
+    // Explosões: som, clarão e o desenho por um instante
+    for (Explosao& x : explosoes_) x.tempo += dt;
+    std::erase_if(explosoes_, [](const Explosao& x) { return x.tempo >= DURACAO_EXPLOSAO; });
+    for (const glm::vec3& p : tiros.explosoes) {
+        explosoes_.push_back({p});
+        clarao_ = DURACAO_CLARAO;
+        tocar(Som::Explosao, glm::vec2(p.x, p.z));
+    }
 
     // Comportas sobem; ao terminar viram passagem
     for (auto it = abrindo_.begin(); it != abrindo_.end();) {

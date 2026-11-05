@@ -98,7 +98,8 @@ TEST_CASE("ícones dos itens depois dos inimigos") {
     CHECK(render::iconeDoItem(jogo::TipoItem::ChaveInglesa) == render::PRIMEIRO_ITEM);
     CHECK(render::iconeDaMunicao(jogo::TipoMunicao::Balas) == render::PRIMEIRO_ITEM + 10);
     CHECK(render::ICONE_ENGRENAGENS == render::PRIMEIRO_ITEM + 13);
-    CHECK(render::TOTAL_SPRITES == render::PRIMEIRO_ITEM + 14 + 2);  // + lampião e lustre
+    CHECK(render::TOTAL_SPRITES == render::PRIMEIRO_ITEM + 14 + 4);  // + lampião, lustre, bomba e explosão
+    CHECK(render::PRIMEIRO_ITEM == render::PRIMEIRO_INIMIGO + 6 * render::QUADROS_POR_INIMIGO);  // 6 inimigos
 }
 
 TEST_CASE("tela de fim só fala do placar se entrou nele") {

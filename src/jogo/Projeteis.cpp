@@ -17,20 +17,29 @@ ResultadoProjeteis atualizarProjeteis(std::vector<Projetil>& p, const mundo::Gra
                                       float raioJogador, float dt) {
     ResultadoProjeteis r;
     const glm::vec2 jogador{centroJogador.x, centroJogador.z};
+    // Bomba: o dano cai com a distância do centro do jogador; tiro: só quem bateu nele
+    auto explodir = [&](const Projetil& t) {
+        r.explosoes.push_back(t.posicao);
+        const float d = glm::distance(t.posicao, centroJogador);
+        if (d >= t.raioExplosao) return;
+        const int dano = static_cast<int>(std::lround(t.dano * (1.0f - d / t.raioExplosao)));
+        if (dano >= 1) r.golpes.push_back({dano, t.autor});
+    };
     std::erase_if(p, [&](Projetil& t) {
+        t.velocidade.y -= t.gravidade * dt;
         const glm::vec3 deslocamento = t.velocidade * dt;
         const int n = std::max(1, static_cast<int>(std::ceil(glm::length(deslocamento) / SUBPASSO)));
         for (int i = 0; i < n; ++i) {
             t.posicao += deslocamento / static_cast<float>(n);
             const glm::vec2 plano{t.posicao.x, t.posicao.z};
-            if (glm::distance(plano, jogador) < raioJogador + RAIO_PROJETIL &&
-                std::abs(t.posicao.y - centroJogador.y) <= mundo::ALTURA_CORPO / 2 + RAIO_PROJETIL) {
-                r.golpes.push_back({t.dano, t.autor});
-                return true;
-            }
-            if (g.solida(static_cast<int>(std::floor(plano.x)), static_cast<int>(std::floor(plano.y))) ||
-                t.posicao.y < mundo::alturaDoChao(g, plano) || t.posicao.y > mundo::alturaDoTeto(g, plano))
-                return true;
+            const bool noJogador = glm::distance(plano, jogador) < raioJogador + RAIO_PROJETIL &&
+                                   std::abs(t.posicao.y - centroJogador.y) <= mundo::ALTURA_CORPO / 2 + RAIO_PROJETIL;
+            const bool bateu = g.solida(static_cast<int>(std::floor(plano.x)), static_cast<int>(std::floor(plano.y))) ||
+                               t.posicao.y < mundo::alturaDoChao(g, plano) || t.posicao.y > mundo::alturaDoTeto(g, plano);
+            if (!noJogador && !bateu) continue;
+            if (t.raioExplosao > 0) explodir(t);
+            else if (noJogador) r.golpes.push_back({t.dano, t.autor});
+            return true;
         }
         return false;
     });

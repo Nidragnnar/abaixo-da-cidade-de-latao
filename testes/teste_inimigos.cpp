@@ -64,3 +64,47 @@ TEST_CASE("marcas do texto viram inimigos") {
     CHECK(v[0].posicao == glm::vec2(2.5f, 1.5f));
     CHECK(a.grade.em(2, 1) == mundo::Celula::Chao);
 }
+
+TEST_CASE("voadores na tabela") {
+    using jogo::TipoInimigo;
+    CHECK(jogo::dados(TipoInimigo::Vespa).voa);
+    CHECK(jogo::dados(TipoInimigo::Dirigivel).voa);
+    CHECK_FALSE(jogo::dados(TipoInimigo::Rato).voa);
+    CHECK_FALSE(jogo::dados(TipoInimigo::Colosso).voa);
+    CHECK(jogo::dados(TipoInimigo::Vespa).vida == 6);
+    CHECK(jogo::dados(TipoInimigo::Vespa).xp == 5);
+    CHECK(jogo::dados(TipoInimigo::Vespa).danoMin == 2);
+    CHECK(jogo::dados(TipoInimigo::Vespa).danoMax == 4);
+    CHECK(jogo::dados(TipoInimigo::Dirigivel).vida == 18);
+    CHECK(jogo::dados(TipoInimigo::Dirigivel).defesa == 1);
+    CHECK(jogo::dados(TipoInimigo::Dirigivel).danoMin == 5);
+    CHECK(jogo::dados(TipoInimigo::Dirigivel).danoMax == 8);
+    CHECK(jogo::dados(TipoInimigo::Dirigivel).xp == 12);
+}
+
+TEST_CASE("voadores só a partir do andar certo") {
+    bool vespaNo2 = false, vespaNo3 = false, dirigivelNo3 = false;
+    for (uint32_t s = 1; s <= 200; ++s) {
+        for (auto& i : jogo::gerarInimigos(mundo::gerarAndar(s, 1), s)) REQUIRE_FALSE(jogo::dados(i.tipo).voa);
+        for (auto& i : jogo::gerarInimigos(mundo::gerarAndar(s, 2), s)) {
+            REQUIRE(i.tipo != jogo::TipoInimigo::Dirigivel);
+            vespaNo2 |= i.tipo == jogo::TipoInimigo::Vespa;
+        }
+        for (auto& i : jogo::gerarInimigos(mundo::gerarAndar(s, 3), s)) {
+            vespaNo3 |= i.tipo == jogo::TipoInimigo::Vespa;
+            dirigivelNo3 |= i.tipo == jogo::TipoInimigo::Dirigivel;
+        }
+    }
+    CHECK(vespaNo2);
+    CHECK(vespaNo3);
+    CHECK(dirigivelNo3);
+}
+
+TEST_CASE("marcas v e d viram voadores") {
+    auto a = mundo::andarDeTexto({"#####", "#@vd#", "#####"}, 3);
+    auto v = jogo::inimigosDasMarcas(a);
+    REQUIRE(v.size() == 2);
+    CHECK(v[0].tipo == jogo::TipoInimigo::Vespa);
+    CHECK(v[1].tipo == jogo::TipoInimigo::Dirigivel);
+    CHECK(v[1].posicao == glm::vec2(3.5f, 1.5f));
+}

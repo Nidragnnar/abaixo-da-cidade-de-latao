@@ -498,3 +498,52 @@ TEST_CASE("item largado na plataforma fica no alto") {
     passos(p, 1, apertarE());  // e pega de volta lá de cima
     CHECK(p.chao().empty());
 }
+
+TEST_CASE("sem voador, campo voador vazio") {
+    jogo::Partida p(mundo::andarDeTexto({"#######", "#@..r.#", "#######"}, 1), 1);
+    passos(p, 60);
+    CHECK(p.campoVoador().empty());
+}
+
+TEST_CASE("com voador, campo voador calculado") {
+    jogo::Partida p(mundo::andarDeTexto({"#######", "#@...v#", "#######"}, 2), 1);
+    passos(p, 60);
+    CHECK(p.campoVoador().size() == 7u * 3u);
+}
+
+TEST_CASE("explosão de bomba fere o jogador, toca e aparece") {
+    jogo::Partida p(mundo::andarDeTexto({"#####", "#@..#", "#####"}, 3, {}, {"00000", "0ggg0", "00000"}), 1);
+    p.acrescentarInimigo(jogo::TipoInimigo::Dirigivel, p.jogador().posicao);  // em cima do jogador
+    const int antes = p.vida();
+    bool tocou = false;
+    for (int i = 0; i < 120 && p.explosoes().empty(); ++i) {
+        p.atualizar({}, 1.0f / 60);
+        for (const auto& s : p.sons()) tocou |= s.som == jogo::Som::Explosao;
+    }
+    REQUIRE(p.explosoes().size() == 1);
+    CHECK(tocou);
+    CHECK(p.vida() < antes);
+    passos(p, static_cast<int>(jogo::DURACAO_EXPLOSAO * 60) + 1);
+    CHECK(p.explosoes().empty());
+}
+
+TEST_CASE("acrescentarInimigo põe o inimigo no chão da célula") {
+    jogo::Partida p(mundo::andarDeTexto({"######", "#@...#", "######"}, 2, {"000000", "000400", "000000"}), 1);
+    p.acrescentarInimigo(jogo::TipoInimigo::Vespa, {3.5f, 1.5f});
+    REQUIRE(p.inimigos().size() == 1);
+    CHECK(p.inimigos()[0].tipo == jogo::TipoInimigo::Vespa);
+    CHECK(p.inimigos()[0].corpo.pes == doctest::Approx(1.0f));
+    CHECK(p.inimigos()[0].vida == jogo::escalar(6, 2));
+}
+
+TEST_CASE("voador no alto não empurra o jogador") {
+    jogo::Partida p(mundo::andarDeTexto({"#######", "#.....#", "#..@..#", "#.....#", "#######"}, 3, {},
+                                        {"0000000", "0ggggg0", "0ggggg0", "0ggggg0", "0000000"}),
+                    1);
+    p.tornarInvencivel();
+    p.acrescentarInimigo(jogo::TipoInimigo::Dirigivel, {3.5f, 1.5f});
+    passos(p, 120);  // sobe até perto do teto e vem para cima do jogador
+    const glm::vec2 antes = p.jogador().posicao;
+    passos(p, 120);
+    CHECK(glm::distance(p.jogador().posicao, antes) < 0.01f);
+}

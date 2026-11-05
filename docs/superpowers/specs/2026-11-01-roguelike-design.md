@@ -175,10 +175,12 @@ Ao levar dano, a tela pisca em vermelho e a arma na mão balança.
 | Autômato operário | 16 | 4–6 | média | robô de fábrica, corpo a corpo | 8 |
 | Atirador da Guilda | 10 | 3–5 (tiro) | média | mercenário de máscara de gás; mantém de 3 a 6 células de distância e atira | 8 |
 | Colosso a vapor | 40 | 8–12 | lenta | blindado (defesa 2), golpe demorado | 20 |
+| Vespa a corda (6B) | 6 | 2–4 | rápida | voa; mergulha até o peito para morder e sobe; vem em 1–2 | 5 |
+| Dirigível a vapor (6B) | 18 | 5–8 (bomba) | lenta | voa perto do teto (defesa 1); solta bombas em área a cada 2,5 s | 12 |
 
 - Os tiros do Atirador da Guilda são **projéteis visíveis** (velocidade 10 células/s), para que dê para desviar.
 - **Escala por andar:** vida e dano × (1 + 0,15 × (andar − 1)).
-- **Quantidade:** de 6 + 2 × andar até 10 + 2 × andar inimigos por andar. Atiradores a partir do andar 2, Colossos a partir do 3.
+- **Quantidade:** de 6 + 2 × andar até 10 + 2 × andar inimigos por andar. Atiradores e vespas a partir do andar 2, Colossos e dirigíveis a partir do 3 (Etapa 6B, ver `2026-11-05-etapa6b-voadores-design.md`).
 - **Estados:** `Parado` → (vê o jogador por linha de visão na grade até 10 células, ou ouve barulho dentro do alcance
   da seção 4) → `Perseguindo` (caminho na grade por busca em largura, recalculado a cada 0,5 s) → `Atacando` (no alcance)
   → `Destruido` (destroços somem depois de 10 s).

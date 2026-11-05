@@ -30,6 +30,12 @@ constexpr float ALCANCE_PEGAR = 1.5f;   // pegar item com E
 constexpr float LARGURA_PEGAR = 0.4f;   // quanto o item pode estar fora da linha do olhar
 constexpr float DURACAO_CLARAO = 0.05f;  // o disparo ilumina a cena
 constexpr float DISTANCIA_PASSO = 1.7f;  // um som de passo a cada tanto andado
+constexpr float DURACAO_EXPLOSAO = 0.3f;  // quanto a explosão da bomba fica na tela
+
+struct Explosao {
+    glm::vec3 posicao;
+    float tempo = 0;  // desde a explosão
+};
 
 // Estado de uma partida: andar, jogador, armas, inimigos, projéteis, comportas, chave, exploração e mensagens
 class Partida {
@@ -53,6 +59,8 @@ public:
     void definirAngulo(float angulo) { jogador_.angulo = angulo; }
     void definirInclinacao(float inclinacao) { jogador_.inclinacao = inclinacao; }
     void definirPosicao(glm::vec2 posicao) { jogador_.posicao = posicao; }
+    // Opção --inimigo: põe mais um inimigo no andar atual, com os pés no chão da célula
+    void acrescentarInimigo(TipoInimigo tipo, glm::vec2 posicao);
     // Opção --invencivel: o dano não reduz a vida (para observar a IA)
     void tornarInvencivel() { invencivel_ = true; }
     // Vazia quando não há mensagem
@@ -67,6 +75,9 @@ public:
     const Atributos& atributos() const { return atributos_; }
     const std::vector<Inimigo>& inimigos() const { return inimigos_; }
     const std::vector<Projetil>& projeteis() const { return projeteis_; }
+    const std::vector<Explosao>& explosoes() const { return explosoes_; }
+    // Vazio enquanto o andar não tem voador vivo (a busca só roda quando precisa)
+    const std::vector<int>& campoVoador() const { return campoVoador_; }
     const std::vector<CoisaNoChao>& chao() const { return chao_; }
     const Armas& armas() const { return armas_; }
     bool morto() const { return morto_; }
@@ -133,7 +144,8 @@ private:
     std::vector<Inimigo> inimigos_;
     std::vector<Projetil> projeteis_;
     std::vector<CoisaNoChao> chao_;
-    std::vector<int> campo_, campoSaltador_;  // distâncias até o jogador, para a IA (andarilhos e ratos)
+    std::vector<Explosao> explosoes_;
+    std::vector<int> campo_, campoSaltador_, campoVoador_;  // distâncias até o jogador (andarilhos, ratos, voadores)
     float desdeCampo_ = 1e9f;
     bool morto_ = false;
     bool invencivel_ = false;

@@ -10,7 +10,8 @@ namespace jogo {
 // Efeitos sonoros (seção 9 da spec); o arquivo é assets/sons/<nomeDoSom>.ogg ou .wav
 enum class Som {
     PassoPedra, PassoMetal, GolpeAr, Acerto, DisparoRevolver, DisparoBacamarte, DisparoTesla, Recarga, ArmaVazia,
-    Dano, InimigoDestruido, Comporta, Pegar, Nivel, Elevador, TiroInimigo, MenuMover, MenuConfirmar, TOTAL
+    Dano, InimigoDestruido, Comporta, Pegar, Nivel, Elevador, TiroInimigo, MenuMover, MenuConfirmar,
+    Zumbido, Motor, Explosao, TOTAL
 };
 
 std::string_view nomeDoSom(Som s);

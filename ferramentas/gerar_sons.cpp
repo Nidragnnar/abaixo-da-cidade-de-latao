@@ -184,6 +184,25 @@ int main(int argc, char** argv) {
              });
          }},
         {"tiro_inimigo", [] { return disparo(0.3f, 0.2f, 20, 90, 0.6f); }},
+        // Vespa a corda: zumbido de asas com vibrato
+        {"zumbido", [] {
+             PassaBaixa lp;
+             return sintetizar(0.6f, [=](float t) mutable {
+                 const float asa = std::sin(2 * PI * 190 * t + 2.5f * std::sin(2 * PI * 23 * t)) > 0 ? 0.5f : -0.5f;
+                 return lp(asa, 0.35f) * std::sin(PI * t / 0.6f);
+             });
+         }},
+        // Dirigível: motor a vapor grave e pulsado
+        {"motor", [] {
+             PassaBaixa lp, lpRuido;
+             return sintetizar(0.9f, [=](float t) mutable {
+                 const float serra = 2.0f * std::fmod(45 * t, 1.0f) - 1.0f;
+                 const float pulso = 0.6f + 0.4f * std::sin(2 * PI * 6 * t);
+                 return (lp(serra, 0.15f) + lpRuido(ruido(), 0.1f) * 0.5f) * pulso * std::sin(PI * t / 0.9f);
+             });
+         }},
+        // Bomba: estrondo abafado com baque grave descendo
+        {"explosao", [] { return disparo(0.8f, 0.12f, 5, 50, 1.4f); }},
         {"menu_mover", [] { return sintetizar(0.04f, [](float t) { return seno(1200, t) * decai(t, 150); }); }},
         {"menu_confirmar", [] {
              return sintetizar(0.15f, [](float t) {

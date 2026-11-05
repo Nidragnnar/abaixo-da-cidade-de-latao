@@ -27,6 +27,9 @@ std::string_view nomeDoSom(Som s) {
         case Som::TiroInimigo: return "tiro_inimigo";
         case Som::MenuMover: return "menu_mover";
         case Som::MenuConfirmar: return "menu_confirmar";
+        case Som::Zumbido: return "zumbido";
+        case Som::Motor: return "motor";
+        case Som::Explosao: return "explosao";
         default: return "";
     }
 }

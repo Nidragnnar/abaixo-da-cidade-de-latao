@@ -9,7 +9,8 @@
 
 namespace jogo {
 
-enum class TipoInimigo { Rato, Automato, Atirador, Colosso };
+enum class TipoInimigo { Rato, Automato, Atirador, Colosso, Vespa, Dirigivel };
+constexpr int TOTAL_TIPOS_INIMIGO = 6;
 
 // Preparando e Recuperando formam o "Atacando" da spec: preparo do golpe e recuperação depois dele
 enum class EstadoInimigo { Parado, Perseguindo, Preparando, Recuperando, Destruido };
@@ -24,6 +25,7 @@ struct DadosInimigo {
     float preparo, recuperacao;  // segundos
     bool aDistancia;
     float altura;  // do chão ao topo, em células (mira vertical e tamanho do sprite)
+    bool voa;      // vespa e dirigível: sem gravidade enquanto vivos, por cima do terreno
 };
 
 // Tabela da seção 5 da spec
@@ -57,7 +59,8 @@ Inimigo criarInimigo(TipoInimigo t, glm::vec2 posicao, int andar);
 // População do andar (determinística pela semente); nunca na sala inicial nem no elevador
 std::vector<Inimigo> gerarInimigos(const mundo::Andar& andar, uint32_t semente);
 
-// Mapas de teste: r Rato, a Autômato, g Atirador da Guilda, c Colosso
+// Mapas de teste: r Rato, a Autômato, g Atirador da Guilda, c Colosso, v Vespa, d Dirigível
 std::vector<Inimigo> inimigosDasMarcas(const mundo::Andar& andar);
+TipoInimigo tipoDaMarca(char letra);  // letra desconhecida vira Rato
 
 }

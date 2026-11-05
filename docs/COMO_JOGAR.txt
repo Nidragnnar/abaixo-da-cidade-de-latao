@@ -34,6 +34,10 @@ DICAS
 - Cair de muito alto machuca: desça pelas escadas e rampas. Pular alcança caixas e
   plataformas de 1 bloco, e algumas plataformas escondem itens que só se pegam pulando.
 - Ratos mecânicos pulam atrás de você; autômatos e colossos precisam dar a volta pela rampa.
+- Do andar 2 em diante aparecem vespas a corda (zumbido) que voam por cima de tudo e
+  mergulham para morder: a chave inglesa só pega quando ela desce; o revólver pega no ar.
+- Do andar 3 em diante, dirigíveis a vapor (ronco de motor) soltam bombas de cima:
+  quando a bomba piscar caindo, saia de baixo.
 
 OPÇÕES, PLACAR E PROBLEMAS
 - Sensibilidade do mouse, volumes e tela cheia ficam no menu Opções.

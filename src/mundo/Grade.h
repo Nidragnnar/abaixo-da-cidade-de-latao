@@ -57,7 +57,7 @@ struct MapaCarregado {
     glm::vec2 inicio;                     // centro da célula '@'
     std::optional<glm::vec2> chave;       // centro da célula 'K'
     std::optional<glm::ivec2> elevador;   // célula 'E'
-    std::vector<std::pair<char, glm::vec2>> marcas;  // r a g c: inimigos dos mapas de teste
+    std::vector<std::pair<char, glm::vec2>> marcas;  // r a g c v d: inimigos dos mapas de teste
 };
 
 // '#' parede, '.' chão, '@' chão + início, 'C' comporta, 'T' comporta trancada, 'E' elevador,
