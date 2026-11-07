@@ -1,6 +1,9 @@
-﻿# Monta o pacote para os amigos: pacote\AbaixoDaCidadeDeLatao-v1.zip (seção 14 da spec)
+﻿# Monta o pacote para os amigos: pacote\AbaixoDaCidadeDeLatao-v<versão>.zip (seção 14 da spec)
 # Compila em Release, confere que não depende do Visual C++ Redistributable e testa o zip extraído.
+# Uso: .\ferramentas\empacotar.ps1 1.4   (sem versão: pacote\AbaixoDaCidadeDeLatao-teste.zip, para testar)
+param([string]$Versao = "")
 $ErrorActionPreference = "Stop"
+if ($Versao -and $Versao -notmatch '^\d+(\.\d+)+$') { "versão inválida: $Versao (use números, ex.: 1.4)"; exit 1 }
 Set-Location (Split-Path $PSScriptRoot)
 $nome = "AbaixoDaCidadeDeLatao"
 
@@ -31,7 +34,7 @@ foreach ($arquivo in "$nome.exe", "SDL2.dll", "SDL2_mixer.dll") {
 if ($proibidas) { "PACOTE NÃO GERADO: depende do runtime do Visual C++: $($proibidas -join ', ')"; exit 1 }
 "dependências ok"
 
-$zip = "pacote\$nome-v1.zip"
+$zip = if ($Versao) { "pacote\$nome-v$Versao.zip" } else { "pacote\$nome-teste.zip" }
 # Entrada por entrada com "/" (o Compress-Archive do PowerShell 5.1 grava caminhos com \, que outros programas estranham)
 Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
 $arquivoZip = [IO.Compression.ZipFile]::Open("$PWD\$zip", [IO.Compression.ZipArchiveMode]::Create)

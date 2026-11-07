@@ -27,7 +27,7 @@ O guia completo, com controles e dicas, vai junto no zip: `COMO_JOGAR.txt`.
 | I | inventário |
 | 1 2 3 4 | itens rápidos |
 | Tab | mapa |
-| Esc | pausa e opções |
+| Esc | pausa, opções e salvar e sair |
 
 ## O que tem no jogo
 
@@ -39,7 +39,8 @@ O guia completo, com controles e dicas, vai junto no zip: `COMO_JOGAR.txt`.
   fogo (revólver, bacamarte, pistola Tesla), munição escassa por tipo.
 - Itens com qualidade (comum, modificada, obra-prima) e bônus, armaduras, tônicos, inventário com mouse,
   XP e níveis.
-- Menu, pausa, opções (sensibilidade, volumes, tela cheia, semente fixa), placar, sons e música.
+- Menu, pausa, opções (sensibilidade, volumes, tela cheia, semente fixa), placar, sons e música;
+  "Salvar e sair" para continuar a partida depois (um salvamento só, a morte continua permanente).
 
 ![Inventário](docs/imagens/inventario.png)
 
@@ -53,7 +54,7 @@ Requisitos: Visual Studio 2026 (com C++) e CMake 3.25 ou mais novo.
 ```
 cmake --preset vs
 .\ferramentas\compilar.ps1 release      # compila e roda os testes automáticos
-.\ferramentas\empacotar.ps1             # gera pacote\AbaixoDaCidadeDeLatao-v1.zip
+.\ferramentas\empacotar.ps1 1.4         # gera pacote\AbaixoDaCidadeDeLatao-v1.4.zip (sem versão: -teste.zip)
 ```
 
 Opções úteis para testar: `--semente <n>`, `--andar <n>`, `--invencivel`, `--demo <semente>` (anda sozinho até

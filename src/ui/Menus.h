@@ -12,7 +12,10 @@ namespace ui {
 enum class Tela { Principal, Jogo, Pausa, Placar, Opcoes, Fim };
 
 // O que o laço principal precisa fazer depois da navegação
-enum class Acao { Nenhuma, NovoJogo, Continuar, Abandonar, Sair, OpcoesMudaram, SalvarOpcoes, AbrirPlacar };
+enum class Acao {
+    Nenhuma, NovoJogo, Continuar, Abandonar, Sair, OpcoesMudaram, SalvarOpcoes, AbrirPlacar,
+    ContinuarSalva, SalvarESair  // "Continuar partida" (do arquivo) e "Salvar e sair" (pausa)
+};
 
 // Entrada já traduzida para os menus (desde o último quadro)
 struct EntradaMenu {
@@ -32,6 +35,8 @@ public:
     void abrir(Tela t);
     // Jogo → Pausa; nas outras telas não faz nada
     void focoPerdido();
+    // Há partida salva: o menu principal ganha "Continuar partida" e "Novo jogo" pede confirmação
+    void definirPartidaSalva(bool salva) { partidaSalva_ = salva; }
     Acao atualizar(const EntradaMenu& e, jogo::Config& c);
     // Textos dos itens da tela atual
     std::vector<std::string> itens(const jogo::Config& c) const;
@@ -49,6 +54,9 @@ private:
     Tela origemOpcoes_ = Tela::Principal;
     int selecionado_ = 0;
     bool confirmandoAbandono_ = false;
+    bool confirmandoNovo_ = false;  // "Novo jogo" com partida salva: segundo Enter apaga e começa
+    bool partidaSalva_ = false;
+    int base() const { return partidaSalva_ ? 1 : 0; }  // "Continuar partida" empurra os itens do principal
     std::optional<int> ultimoSobMouse_;  // item sob o mouse no quadro anterior (fica entre telas)
 };
 

@@ -8,7 +8,7 @@ namespace ui {
 
 namespace {
 
-constexpr int ITEM_OPCOES_PRINCIPAL = 2, ITEM_OPCOES_PAUSA = 1, ITEM_ABANDONAR = 2;
+constexpr int ITEM_OPCOES_PRINCIPAL = 2, ITEM_OPCOES_PAUSA = 2, ITEM_ABANDONAR = 3;  // principal: sem a partida salva
 constexpr int ITEM_SEMENTE = 4, ITEM_VOLTAR_OPCOES = 5;
 
 // Muda um valor inteiro dentro da faixa; falso se já estava no limite
@@ -24,7 +24,7 @@ bool mudar(int& valor, int delta, int minimo, int maximo) {
 void Menus::irPara(Tela t, int selecionado) {
     tela_ = t;
     selecionado_ = selecionado;
-    confirmandoAbandono_ = false;
+    confirmandoAbandono_ = confirmandoNovo_ = false;
 }
 
 void Menus::abrir(Tela t) { irPara(t); }
@@ -45,9 +45,11 @@ std::string_view Menus::titulo() const {
 
 std::vector<std::string> Menus::itens(const jogo::Config& c) const {
     switch (tela_) {
-        case Tela::Principal: return {"Novo jogo", "Placar", "Opções", "Sair"};
+        case Tela::Principal:
+            if (!partidaSalva_) return {"Novo jogo", "Placar", "Opções", "Sair"};
+            return {"Continuar partida", confirmandoNovo_ ? "Apagar a partida salva?" : "Novo jogo", "Placar", "Opções", "Sair"};
         case Tela::Pausa:
-            return {"Continuar", "Opções", confirmandoAbandono_ ? "Confirmar: abandonar?" : "Abandonar partida"};
+            return {"Continuar", "Salvar e sair", "Opções", confirmandoAbandono_ ? "Confirmar: abandonar?" : "Abandonar partida"};
         case Tela::Placar: return {"Voltar"};
         case Tela::Opcoes:
             return {std::format("Sensibilidade do mouse: {}", c.sensibilidade),
@@ -97,8 +99,18 @@ Acao Menus::digitarSemente(const EntradaMenu& e, jogo::Config& c) {
 Acao Menus::confirmarItem(jogo::Config& c) {
     switch (tela_) {
         case Tela::Principal:
-            switch (selecionado_) {
-                case 0: irPara(Tela::Jogo); return Acao::NovoJogo;
+            if (partidaSalva_ && selecionado_ == 0) {
+                irPara(Tela::Jogo);
+                return Acao::ContinuarSalva;
+            }
+            switch (selecionado_ - base()) {
+                case 0:
+                    if (partidaSalva_ && !confirmandoNovo_) {  // apagaria a partida salva: pergunta antes
+                        confirmandoNovo_ = true;
+                        return Acao::Nenhuma;
+                    }
+                    irPara(Tela::Jogo);
+                    return Acao::NovoJogo;
                 case 1: irPara(Tela::Placar); return Acao::AbrirPlacar;
                 case 2:
                     origemOpcoes_ = Tela::Principal;
@@ -109,7 +121,8 @@ Acao Menus::confirmarItem(jogo::Config& c) {
         case Tela::Pausa:
             switch (selecionado_) {
                 case 0: irPara(Tela::Jogo); return Acao::Continuar;
-                case 1:
+                case 1: return Acao::SalvarESair;  // quem grava decide para onde vai (falhou: fica na pausa)
+                case 2:
                     origemOpcoes_ = Tela::Pausa;
                     irPara(Tela::Opcoes);
                     return Acao::Nenhuma;
@@ -121,10 +134,10 @@ Acao Menus::confirmarItem(jogo::Config& c) {
                     irPara(Tela::Principal);
                     return Acao::Abandonar;
             }
-        case Tela::Placar: irPara(Tela::Principal, 1); return Acao::Nenhuma;
+        case Tela::Placar: irPara(Tela::Principal, base() + 1); return Acao::Nenhuma;
         case Tela::Opcoes:
             if (selecionado_ == ITEM_VOLTAR_OPCOES) {
-                irPara(origemOpcoes_, origemOpcoes_ == Tela::Pausa ? ITEM_OPCOES_PAUSA : ITEM_OPCOES_PRINCIPAL);
+                irPara(origemOpcoes_, origemOpcoes_ == Tela::Pausa ? ITEM_OPCOES_PAUSA : base() + ITEM_OPCOES_PRINCIPAL);
                 return Acao::SalvarOpcoes;
             }
             return selecionado_ == ITEM_SEMENTE ? Acao::Nenhuma : ajustarOpcao(selecionado_, 1, c);
@@ -156,17 +169,17 @@ Acao Menus::atualizar(const EntradaMenu& e, jogo::Config& c) {
     ultimoSobMouse_ = e.itemSobMouse;
     if (mouseValido && (mouseMudou || e.clique || e.cliqueDireito) && *e.itemSobMouse != selecionado_) {
         selecionado_ = *e.itemSobMouse;
-        confirmandoAbandono_ = false;
+        confirmandoAbandono_ = confirmandoNovo_ = false;
     }
     if (e.mover != 0) {
         selecionado_ = ((selecionado_ + e.mover) % quantidade + quantidade) % quantidade;
-        confirmandoAbandono_ = false;
+        confirmandoAbandono_ = confirmandoNovo_ = false;
     }
 
     if (e.voltar) {
         switch (tela_) {
             case Tela::Pausa: irPara(Tela::Jogo); return Acao::Continuar;
-            case Tela::Placar: irPara(Tela::Principal, 1); return Acao::Nenhuma;
+            case Tela::Placar: irPara(Tela::Principal, base() + 1); return Acao::Nenhuma;
             case Tela::Opcoes:
                 selecionado_ = ITEM_VOLTAR_OPCOES;
                 return confirmarItem(c);

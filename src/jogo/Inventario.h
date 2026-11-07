@@ -12,7 +12,10 @@ constexpr int VIDA_BASE = 30;
 constexpr int VIDA_POR_NIVEL = 8;
 
 // 16 espaços + arma branca, arma de fogo e armadura equipadas (nunca vazias)
+struct Salvamento;
+
 class Inventario {
+    friend struct Salvamento;
 public:
     // Equipamento inicial (chave inglesa, revólver carregado, casaco) e 2 tônicos no espaço 0
     Inventario();

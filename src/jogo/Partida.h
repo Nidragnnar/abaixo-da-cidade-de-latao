@@ -40,8 +40,11 @@ struct Explosao {
     float tempo = 0;  // desde a explosão
 };
 
+struct Salvamento;
+
 // Estado de uma partida: andar, jogador, armas, inimigos, projéteis, comportas, chave, exploração e mensagens
 class Partida {
+    friend struct Salvamento;  // grava e remonta o estado (jogo/Salvamento.h)
 public:
     // Gera o andar e a população a partir da semente
     Partida(uint32_t semente, int andarInicial = 1);

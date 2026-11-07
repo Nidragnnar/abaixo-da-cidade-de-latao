@@ -114,3 +114,13 @@ TEST_CASE("placar: corte da causa não come o acento antes do ponto de corte") {
         if (v.posicao.y > 40 && v.posicao.y < 60) direita = std::max(direita, v.posicao.x);
     CHECK(direita > 448 - 16);
 }
+
+TEST_CASE("menu mostra o aviso embaixo dos itens") {
+    render::VistaMenu v{"Abaixo da Cidade de Latão", {"Novo jogo", "Placar", "Opções", "Sair"}, 0};
+    CHECK_FALSE(contemTexto(render::construirMenu(v, 480, 270).texto, "Partida salva não pôde ser lida"));
+    v.aviso = "Partida salva não pôde ser lida";
+    const auto e = render::construirMenu(v, 480, 270);
+    CHECK(contemTexto(e.texto, "Partida salva não pôde ser lida"));
+    const auto& a = e.cores[e.cores.size() - 6];  // o destaque continua sendo o último retângulo
+    CHECK(a.posicao.y == doctest::Approx(render::layoutMenu(4, 480, 270)[0].y));
+}

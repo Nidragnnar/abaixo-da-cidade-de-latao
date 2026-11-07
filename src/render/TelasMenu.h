@@ -16,6 +16,7 @@ struct VistaMenu {
     std::string_view titulo;
     std::vector<std::string> itens;
     int selecionado;
+    std::string_view aviso = {};  // linha embaixo dos itens (partida salva que não abriu, salvamento que falhou)
 };
 
 // Um retângulo por item, centralizados, de cima para baixo (para o mouse e para o destaque)

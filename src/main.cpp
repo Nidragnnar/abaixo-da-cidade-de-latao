@@ -19,6 +19,7 @@
 #include "jogo/Partida.h"
 #include "jogo/PassoFixo.h"
 #include "jogo/Placar.h"
+#include "jogo/Salvamento.h"
 #include "jogo/Sons.h"
 #include "mundo/Gerador.h"
 #include "mundo/Terreno.h"
@@ -75,6 +76,7 @@ struct Opcoes {
     // --inimigo <letra> <x> <z> (repetível): põe mais um inimigo no andar inicial (letras dos mapas de teste)
     std::vector<std::pair<char, glm::vec2>> inimigos;
     std::optional<int> vidaChefe;        // --vida-chefe <n>: o chefe do andar inicial começa com essa vida (testes)
+    bool gravarPartida = false;          // --gravar-partida: monta a partida pedida, grava partida.sav e sai (cenários)
 
     // Começa direto na partida, sem o menu (cenários de teste e roteiros)
     bool direto() const {
@@ -105,6 +107,7 @@ Opcoes lerOpcoes(int argc, char** argv) {
         else if (arg == "--mudo") o.mudo = true;
         else if (arg == "--tela" && temValor) o.tela = argv[++i];
         else if (arg == "--vida-chefe" && temValor) o.vidaChefe = std::stoi(argv[++i]);
+        else if (arg == "--gravar-partida") o.gravarPartida = true;
         else if (arg == "--inimigo" && i + 3 < argc) {
             const char letra = argv[++i][0];
             const float x = std::stof(argv[++i]);
@@ -355,6 +358,11 @@ int main(int argc, char** argv) {
         if (usaDadosDoJogador) lidas = lerOpcoesDoJogador(arquivoConfig);
         jogo::Config config = lidas.config;
         const bool podeGravarConfig = usaDadosDoJogador && lidas.podeGravar;
+        // "Salvar e sair": nunca nas partidas de teste (demo, captura, invencível)
+        const std::filesystem::path arquivoSalvamento = plataforma::pastaDeDados() / "partida.sav";
+        const bool podeSalvar = usaDadosDoJogador &&
+                                jogo::podeUsarSalvamento(automatico, opcoes.invencivel, opcoes.direto(), !opcoes.dados.empty());
+        std::string avisoMenu;  // embaixo dos itens do menu (partida salva que não abriu, salvamento que falhou)
 
         plataforma::Janela janela(NOME_DO_JOGO, 1280, 720);
         bool telaCheia = config.telaCheia && !automatico;
@@ -492,7 +500,12 @@ int main(int argc, char** argv) {
         SDL_SetWindowTitle(janela.sdl(), NOME_DO_JOGO);
         int quadro = 0;
         Uint64 ultimo = SDL_GetPerformanceCounter();
+        menus.definirPartidaSalva(podeSalvar && jogo::existePartidaSalva(arquivoSalvamento));
         bool sair = false;
+        if (opcoes.gravarPartida && partida && !partidaDeFundo) {  // cenário de teste: só grava e sai
+            plataforma::logar(jogo::gravarPartida(arquivoSalvamento, *partida) ? "--gravar-partida: gravada" : "--gravar-partida: falhou");
+            sair = true;
+        }
         bool demoTerminou = false;
         while (!entrada.pediuSair() && !sair) {
             SDL_Event e;
@@ -600,8 +613,43 @@ int main(int argc, char** argv) {
                     tocar(jogo::Som::MenuConfirmar);
                 switch (acao) {
                     case ui::Acao::NovoJogo:
+                        // Com partida salva, o menu já pediu confirmação: começar outra a apaga
+                        if (podeSalvar) jogo::apagarPartidaSalva(arquivoSalvamento);
+                        menus.definirPartidaSalva(false);
+                        avisoMenu.clear();
                         novaPartida(config.semente.value_or(std::random_device{}()), 1);
                         entrada.entrarNoJogo();
+                        break;
+                    case ui::Acao::ContinuarSalva: {
+                        auto [resultado, lida] = jogo::continuarPartida(arquivoSalvamento);
+                        menus.definirPartidaSalva(false);  // continuar consome o salvamento (ou ele estava estragado)
+                        if (resultado != jogo::ResultadoCarga::Carregou) {
+                            menus.abrir(ui::Tela::Principal);
+                            avisoMenu = resultado == jogo::ResultadoCarga::Estragado ? "Partida salva não pôde ser lida" : "";
+                            plataforma::logar("partida.sav não pôde ser lida (renomeada para .corrompido)");
+                            break;
+                        }
+                        plataforma::logar(std::format("Partida salva continuada (semente {}, andar {})", lida->semente(),
+                                                      lida->andar().numero));
+                        partida = std::make_unique<jogo::Partida>(std::move(*lida));
+                        partidaDeFundo = false;
+                        placarGravado = false;
+                        posicaoPlacar = 0;
+                        tempoMorto = 0.0f;
+                        passo.zerar();
+                        prepararAndar();
+                        avisoMenu.clear();
+                        entrada.entrarNoJogo();
+                        break;
+                    }
+                    case ui::Acao::SalvarESair:
+                        if (podeSalvar && jogo::gravarPartida(arquivoSalvamento, *partida)) {
+                            plataforma::logar("Partida salva; saindo");
+                            sair = true;
+                        } else {
+                            avisoMenu = "Não foi possível salvar";  // fica na pausa
+                            plataforma::logar("Não foi possível salvar " + arquivoSalvamento.string());
+                        }
                         break;
                     case ui::Acao::Continuar: entrada.entrarNoJogo(); break;
                     case ui::Acao::Abandonar: mostrarFundo(); break;
@@ -759,7 +807,7 @@ int main(int argc, char** argv) {
                 const render::ElementosHud m =
                     tela == ui::Tela::Placar
                         ? render::construirPlacar(placarLido, telaL, telaA)
-                        : render::construirMenu({menus.titulo(), menus.itens(config), menus.selecionado()}, telaL, telaA);
+                        : render::construirMenu({menus.titulo(), menus.itens(config), menus.selecionado(), avisoMenu}, telaL, telaA);
                 desenho2D.desenhar(m.cores, telaL, telaA);
                 desenhoTextura.desenhar(m.texto, fonte, telaL, telaA);
             }
@@ -782,6 +830,13 @@ int main(int argc, char** argv) {
                 break;
             }
             janela.trocarBuffers();
+        }
+        // Fechou a janela no meio de uma partida: grava como "Salvar e sair" (morto ou vencido não grava)
+        if (!sair && podeSalvar && partida && !partidaDeFundo && !partida->terminou() &&
+            (menus.tela() == ui::Tela::Jogo || menus.tela() == ui::Tela::Pausa ||
+             (menus.tela() == ui::Tela::Opcoes))) {
+            if (jogo::gravarPartida(arquivoSalvamento, *partida)) plataforma::logar("Janela fechada: partida salva");
+            else plataforma::logar("Janela fechada: não foi possível salvar " + arquivoSalvamento.string());
         }
         // Fechou a janela (X, Alt+F4) com a tela de opções aberta: não perde o que mudou
         if (menus.tela() == ui::Tela::Opcoes && podeGravarConfig && !jogo::gravarConfig(arquivoConfig, config))

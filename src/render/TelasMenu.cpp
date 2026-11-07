@@ -70,6 +70,7 @@ ElementosHud construirMenu(const VistaMenu& v, int telaL, int telaA) {
                      selecionado ? COR_LATAO : COR_TEXTO);
         if (selecionado) texto(e.texto, ">", {static_cast<float>(itens[i].x + 4), static_cast<float>(itens[i].y + 2)}, 1, COR_LATAO);
     }
+    if (!v.aviso.empty()) centralizado(e.texto, v.aviso, static_cast<float>(baixo + 6), telaL, 1, COR_LATAO);
     // Destaque por último (o teste e o laço contam com isso); desenhado antes do texto, que vem em outra lista
     if (v.selecionado >= 0 && v.selecionado < static_cast<int>(itens.size()))
         retangulo(e.cores, itens[static_cast<size_t>(v.selecionado)], COR_DESTAQUE);

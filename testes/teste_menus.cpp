@@ -102,12 +102,12 @@ TEST_CASE("abandonar pede confirmação") {
     jogo::Config c;
     m.abrir(ui::Tela::Pausa);
     m.atualizar(mover(-1), c);
-    CHECK(m.itens(c)[2] == "Abandonar partida");
+    CHECK(m.itens(c)[3] == "Abandonar partida");
     CHECK(m.atualizar(confirmar(), c) == ui::Acao::Nenhuma);
-    CHECK(m.itens(c)[2] == "Confirmar: abandonar?");
+    CHECK(m.itens(c)[3] == "Confirmar: abandonar?");
     m.atualizar(mover(1), c);
     m.atualizar(mover(-1), c);
-    CHECK(m.itens(c)[2] == "Abandonar partida");
+    CHECK(m.itens(c)[3] == "Abandonar partida");
     m.atualizar(confirmar(), c);
     CHECK(m.atualizar(confirmar(), c) == ui::Acao::Abandonar);
     CHECK(m.tela() == ui::Tela::Principal);
@@ -117,7 +117,7 @@ TEST_CASE("opções ajustam dentro dos limites e voltam para quem abriu") {
     ui::Menus m;
     jogo::Config c;
     m.abrir(ui::Tela::Pausa);
-    m.atualizar(mover(1), c);
+    m.atualizar(mover(2), c);  // "Opções" é o terceiro item da pausa
     m.atualizar(confirmar(), c);
     REQUIRE(m.tela() == ui::Tela::Opcoes);
     CHECK(m.titulo() == "Opções");
@@ -136,7 +136,7 @@ TEST_CASE("opções ajustam dentro dos limites e voltam para quem abriu") {
     CHECK(m.itens(c)[3] == "Tela cheia: sim");
     CHECK(m.atualizar(voltar(), c) == ui::Acao::SalvarOpcoes);
     CHECK(m.tela() == ui::Tela::Pausa);
-    CHECK(m.selecionado() == 1);  // de volta em "Opções"
+    CHECK(m.selecionado() == 2);  // de volta em "Opções"
 }
 
 TEST_CASE("Voltar nas opções do menu principal volta ao principal") {
@@ -245,4 +245,59 @@ TEST_CASE("clique vale para o item sob o mouse mesmo depois do teclado") {
     m.atualizar(mover(-1), c);  // teclado leva para o item 2, mouse parado no 3
     e.clique = true;
     CHECK(m.atualizar(e, c) == ui::Acao::Sair);
+}
+
+TEST_CASE("sem partida salva o menu é o de antes") {
+    ui::Menus m;
+    jogo::Config c;
+    CHECK(m.itens(c) == std::vector<std::string>{"Novo jogo", "Placar", "Opções", "Sair"});
+}
+
+TEST_CASE("com partida salva, o primeiro item é Continuar partida e devolve ContinuarSalva") {
+    ui::Menus m;
+    jogo::Config c;
+    m.definirPartidaSalva(true);
+    CHECK(m.itens(c) == std::vector<std::string>{"Continuar partida", "Novo jogo", "Placar", "Opções", "Sair"});
+    CHECK(m.atualizar(confirmar(), c) == ui::Acao::ContinuarSalva);
+    CHECK(m.tela() == ui::Tela::Jogo);
+}
+
+TEST_CASE("Novo jogo com partida salva pede confirmação") {
+    ui::Menus m;
+    jogo::Config c;
+    m.definirPartidaSalva(true);
+    m.atualizar(mover(1), c);
+    CHECK(m.atualizar(confirmar(), c) == ui::Acao::Nenhuma);
+    CHECK(m.itens(c)[1] == "Apagar a partida salva?");
+    m.atualizar(mover(1), c);  // mudou de item: desiste
+    m.atualizar(mover(-1), c);
+    CHECK(m.itens(c)[1] == "Novo jogo");
+    m.atualizar(confirmar(), c);
+    CHECK(m.atualizar(confirmar(), c) == ui::Acao::NovoJogo);
+    CHECK(m.tela() == ui::Tela::Jogo);
+}
+
+TEST_CASE("com partida salva, placar e opções voltam para o item certo") {
+    ui::Menus m;
+    jogo::Config c;
+    m.definirPartidaSalva(true);
+    m.atualizar(mover(2), c);
+    CHECK(m.atualizar(confirmar(), c) == ui::Acao::AbrirPlacar);
+    m.atualizar(voltar(), c);
+    CHECK(m.tela() == ui::Tela::Principal);
+    CHECK(m.selecionado() == 2);
+    m.atualizar(mover(1), c);
+    m.atualizar(confirmar(), c);
+    REQUIRE(m.tela() == ui::Tela::Opcoes);
+    m.atualizar(voltar(), c);
+    CHECK(m.selecionado() == 3);
+}
+
+TEST_CASE("pausa tem Salvar e sair e devolve SalvarESair") {
+    ui::Menus m;
+    jogo::Config c;
+    m.abrir(ui::Tela::Pausa);
+    CHECK(m.itens(c) == std::vector<std::string>{"Continuar", "Salvar e sair", "Opções", "Abandonar partida"});
+    m.atualizar(mover(1), c);
+    CHECK(m.atualizar(confirmar(), c) == ui::Acao::SalvarESair);
 }

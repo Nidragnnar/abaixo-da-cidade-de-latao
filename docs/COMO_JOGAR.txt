@@ -24,13 +24,16 @@ E ................. abrir comporta, pegar item, descer no elevador
 I ................. inventário (clique: usar/equipar; direito: largar; arrastar: trocar)
 1 2 3 4 ........... usar os itens da primeira linha do inventário
 Tab ............... mapa
-Esc ............... pausa (continuar, opções, abandonar a partida)
+Esc ............... pausa (continuar, salvar e sair, opções, abandonar a partida)
 
 DICAS
 - A munição é pouca: use a chave inglesa nos inimigos fracos.
 - Comporta com cadeado precisa da válvula-chave, que está em algum lugar do andar.
 - O elevador leva ao próximo andar. Quanto mais fundo, melhores os itens.
 - Itens em azul são modificados; em dourado, obras-primas.
+- Salvar e sair (na pausa) guarda a partida; fechar a janela no meio dela também guarda.
+  No menu, "Continuar partida" volta de onde parou. Só existe um salvamento e ele é
+  apagado ao continuar: a morte continua sem volta.
 - Cair de muito alto machuca: desça pelas escadas e rampas. Pular alcança caixas e
   plataformas de 1 bloco, e algumas plataformas escondem itens que só se pegam pulando.
 - Ratos mecânicos pulam atrás de você; autômatos e colossos precisam dar a volta pela rampa.
