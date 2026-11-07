@@ -134,6 +134,7 @@ private:
     void abrirComporta(int x, int y);
     void conferirArena();  // começa a luta quando o jogador entra todo na arena
     void trancarArena(bool trancar);
+    void trancarLivres();  // durante a luta: tranca as aberturas da arena sem inimigo dentro
     // Sem origem: no máximo um de cada por passo; com origem: todos
     void tocar(Som s, std::optional<glm::vec2> origem = std::nullopt);
     int indice(int x, int y) const { return y * andar_.grade.largura() + x; }

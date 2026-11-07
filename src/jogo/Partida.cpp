@@ -84,12 +84,32 @@ void Partida::trancarArena(bool trancar) {
                 if (anel && c != mundo::Celula::Parede && c != mundo::Celula::Elevador) comportasArena_.push_back({x, y});
             }
     }
+    lutando_ = trancar;
+    if (trancar) {
+        trancarLivres();
+        return;
+    }
     for (const glm::ivec2 c : comportasArena_) {
         abrindo_.erase(indice(c.x, c.y));
-        andar_.grade.definir(c.x, c.y, trancar ? mundo::Celula::ComportaTrancada : mundo::Celula::Comporta);
+        andar_.grade.definir(c.x, c.y, mundo::Celula::Comporta);
     }
-    if (!trancar) comportasArena_.clear();
-    lutando_ = trancar;
+    comportasArena_.clear();
+}
+
+// Tranca as aberturas da arena que não têm inimigo dentro (quem estiver numa delas não é empurrado: ela tranca
+// quando ele sair). Chamada a cada passo durante a luta.
+void Partida::trancarLivres() {
+    for (const glm::ivec2 c : comportasArena_) {
+        if (andar_.grade.em(c.x, c.y) == mundo::Celula::ComportaTrancada) continue;
+        const bool ocupada = std::ranges::any_of(inimigos_, [&](const Inimigo& i) {
+            if (i.estado == EstadoInimigo::Destruido) return false;
+            const float r = raioDe(i);
+            return i.posicao.x + r > c.x && i.posicao.x - r < c.x + 1 && i.posicao.y + r > c.y && i.posicao.y - r < c.y + 1;
+        });
+        if (ocupada) continue;
+        abrindo_.erase(indice(c.x, c.y));
+        andar_.grade.definir(c.x, c.y, mundo::Celula::ComportaTrancada);
+    }
 }
 
 void Partida::conferirArena() {
@@ -305,7 +325,7 @@ void Partida::descer() {
 void Partida::receberDano(int bruto, TipoInimigo autor) {
     tempoDesdeDano_ = 0.0f;
     tocar(Som::Dano);
-    if (invencivel_) return;
+    if (invencivel_ || desdeQuedaFinal_) return;  // depois da Grande Máquina cair, nada mais fere
     vida_ -= std::max(1, bruto - defesa());
     if (vida_ <= 0 && !morto_) {
         morto_ = true;
@@ -320,7 +340,7 @@ void Partida::receberDano(int bruto, TipoInimigo autor) {
 void Partida::cair(int dano) {
     tempoDesdeDano_ = 0.0f;
     tocar(Som::Dano);
-    if (invencivel_) return;
+    if (invencivel_ || desdeQuedaFinal_) return;  // depois da Grande Máquina cair, nada mais fere
     vida_ -= dano;
     if (vida_ <= 0 && !morto_) {
         morto_ = true;
@@ -365,6 +385,7 @@ void Partida::atualizar(const Comandos& c, float dt) {
         tocar(andar_.zona == mundo::Zona::Fabrica ? Som::PassoMetal : Som::PassoPedra);
     }
     conferirArena();
+    if (lutando_) trancarLivres();
     if (c.usar) usar();
     if (c.usarRapido >= 1 && c.usarRapido <= 4) usarEspaco(c.usarRapido - 1);
     pegarAoPassar();

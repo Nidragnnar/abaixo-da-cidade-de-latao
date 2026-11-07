@@ -138,7 +138,11 @@ void aplicarRelevo(Andar& a, uint32_t semente) {
         nivel[r] = sortear(rng, 0, plano ? 1 : 3) * BLOCO;
         tetoSala[r] = sortear(rng, 8, 12);
     }
-    if (a.arena) tetoSala[*a.arena] = TETO_ARENA;  // teto alto: a Grande Máquina chama voadores
+    // Arena: chão baixo (até 1 bloco) e teto alto, que sempre cabe abaixo do TETO_MAXIMO (a Grande Máquina chama voadores)
+    if (a.arena) {
+        nivel[*a.arena] = std::min(nivel[*a.arena], BLOCO);
+        tetoSala[*a.arena] = TETO_ARENA;
+    }
 
     // 2. Platôs e distâncias de cada célula até cada platô
     size_t salaDoElevador = 0;

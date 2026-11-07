@@ -693,3 +693,35 @@ TEST_CASE("arena tranca todas as aberturas do anel, não só as entradas") {
             CHECK(p.andar().grade.solida(x, y));
         }
 }
+
+TEST_CASE("depois da Grande Máquina cair, nada mais fere o jogador") {
+    // Ratos colados no jogador dentro da arena: continuam mordendo nos 3 s até a vitória
+    auto a = mundo::andarDeTexto({"##########", "#@..C....#", "#####rr..#", "#####..M.#", "#####...E#", "##########"}, 6);
+    a.salas = {mundo::Sala{1, 1, 3, 1}, mundo::Sala{5, 1, 4, 4}};
+    a.arena = 1;
+    jogo::Partida p(std::move(a), 1);
+    p.definirPosicao({5.6f, 1.5f});
+    passos(p, 1);
+    p.destruirChefeParaTeste();
+    passos(p, 1);
+    const int vida = p.vida();
+    passos(p, static_cast<int>(jogo::ESPERA_VITORIA * 60) + 5);
+    CHECK(p.vida() == vida);
+    CHECK(p.venceu());
+}
+
+TEST_CASE("inimigo na abertura não é empurrado: ela tranca quando ele sai") {
+    auto a = mundo::andarDeTexto({"##########", "#@..r....#", "#####....#", "#####..R.#", "#####...E#", "##########"}, 2);
+    a.salas = {mundo::Sala{1, 1, 3, 1}, mundo::Sala{5, 1, 4, 4}};
+    a.arena = 1;
+    jogo::Partida p(std::move(a), 1);
+    p.tornarInvencivel();
+    const glm::vec2 antes = p.inimigos()[0].posicao;  // rato na abertura (4, 1)
+    p.definirPosicao({6.5f, 2.5f});
+    passos(p, 1);
+    REQUIRE(p.lutaComChefe());
+    CHECK(glm::distance(p.inimigos()[0].posicao, antes) < 0.1f);  // não saltou para fora da abertura
+    CHECK_FALSE(p.andar().grade.solida(4, 1));                    // ainda aberta: o rato está nela
+    passos(p, 120);  // o rato entra atrás do jogador
+    CHECK(p.andar().grade.em(4, 1) == mundo::Celula::ComportaTrancada);
+}

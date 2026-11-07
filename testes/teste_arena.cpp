@@ -42,7 +42,7 @@ TEST_CASE("andar sem chefe não tem arena") {
 }
 
 TEST_CASE("arena plana e com teto alto") {
-    for (uint32_t s = 1; s <= 30; ++s)
+    for (uint32_t s = 1; s <= 100; ++s)
         for (int n : {4, 6}) {  // o esgoto já é quase plano; fábrica e minas têm relevo
             INFO("semente " << s << " andar " << n);
             const auto a = mundo::gerarAndar(s, n);
@@ -55,7 +55,7 @@ TEST_CASE("arena plana e com teto alto") {
                     REQUIRE(a.grade.chao(x, y) == chao);
                     REQUIRE(a.grade.rampa(x, y) == mundo::Rampa::Nenhuma);
                     REQUIRE(a.grade.detalhe(x, y) == mundo::Detalhe::Nenhum);
-                    REQUIRE((a.grade.teto(x, y) - chao >= 16 || a.grade.teto(x, y) == 20));
+                    REQUIRE(a.grade.teto(x, y) - chao >= 16);  // chão da arena baixo: sempre cabe o teto alto
                 }
         }
 }
