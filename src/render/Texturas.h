@@ -6,7 +6,7 @@
 
 namespace render {
 
-constexpr int LADO_TEXTURA = 64;
+constexpr int LADO_TEXTURA = 128;  // paredes, chão, teto e sprites (arte nova; antes 64)
 
 // Uma camada por arquivo (PNG lado × lado). Arquivo ausente ou de outro tamanho vira xadrez rosa + linha no log.
 // Com o lado padrão (paredes) a textura se repete; com outro lado (armas na mão) fica presa na borda.

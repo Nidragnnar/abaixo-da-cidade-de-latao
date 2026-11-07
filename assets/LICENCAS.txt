@@ -14,53 +14,14 @@ doctest 2.4.11 ...... MIT (só nos testes, não vai no jogo) https://github.com/
 
 Arte e som
 ----------
-Tiny Texture Pack 1 — Screaming Brain Studios — CC0 — https://opengameart.org/content/tiny-texture-pack-1
-  texturas/esgoto_parede.png  "Brick 5"
-  texturas/esgoto_chao.png    "Tile 24"
-  texturas/esgoto_teto.png    "Brick 1"
-  texturas/minas_parede.png   "Brick 25"
-  texturas/minas_teto.png     "Brick 23"
-  texturas/caixa.png          "Wood 14"   (Etapa 6A)
-  texturas/degrau.png         "Brick 24"  (Etapa 6A)
-
-Zortch World Textures — mutantleg — CC0 — https://opengameart.org/content/zortch-world-textures
-  texturas/fabrica_parede.png       tile07
-  texturas/fabrica_chao.png         tile107
-  texturas/fabrica_teto.png         tile33
-  texturas/minas_chao.png           tile05
-  texturas/comporta.png             bigdoor
-  texturas/comporta_trancada.png    bigdoor2
-
-Alteração em todas: reduzidas para 64x64 por ferramentas/preparar_texturas.ps1
-(os pacotes originais ficam em arte_fonte/, fora do jogo distribuído).
-
-PROVISÓRIOS, feitos para este jogo por ferramentas/gerar_sprites.ps1 (sem licença de terceiros):
-  sprites/valvula_chave.png   válvula de latão
-  sprites/elevador.png        gaiola do elevador de carga
+Imagens (sprites/, texturas/ e armas/, todas): geradas com IA pelo Nidragnnar em 2026-11-07, a partir dos
+prompts de docs/PROMPTS_ARTE.md, e reduzidas para 128x128 por ferramentas/importar_arte.ps1. Substituem as
+texturas CC0 (Tiny Texture Pack 1 e Zortch World Textures) e os sprites provisórios feitos por roteiro das
+versões até a v1.2.
 
 Fonte "Press Start 2P" — The Press Start 2P Project Authors (CodeMan38) — SIL Open Font License 1.1
   https://github.com/google/fonts/tree/main/ofl/pressstart2p (commit 6c1dbe27dcf7d817d4b62cec033ba77fa8e2a5ec)
   fonte/fonte.png é a fonte rasterizada em 8x8 por ferramentas/gerar_fonte.ps1; texto da licença em fonte/OFL_PressStart2P.txt
-
-PROVISÓRIOS, feitos para este jogo por ferramentas/gerar_inimigos.ps1 (sem licença de terceiros):
-  sprites/rato_0..6.png, automato_0..6.png, atirador_0..6.png, colosso_0..6.png   inimigos
-  sprites/projetil.png                                                            tiro do Atirador
-  armas/chave_0..1.png, revolver_0..2.png                                         armas na mão
-
-PROVISÓRIOS, feitos para este jogo por ferramentas/gerar_itens.ps1 (sem licença de terceiros):
-  sprites/item_*.png                                     itens, munição e engrenagens (no chão e como ícone)
-  armas/sabre_0..1, martelo_0..1, bacamarte_0..2, tesla_0..1.png   armas novas na mão
-
-PROVISÓRIOS, feitos para este jogo por ferramentas/gerar_lampiao.ps1 (sem licença de terceiros):
-  sprites/lampiao.png   lampião de parede
-  sprites/lustre.png    lustre de teto
-
-PROVISÓRIOS, feitos para este jogo por ferramentas/gerar_voadores.ps1 (sem licença de terceiros):
-  sprites/vespa_0..6.png, dirigivel_0..6.png   vespa a corda e dirigível a vapor
-  sprites/bomba.png, explosao.png              bomba do dirigível e explosão
-
-PROVISÓRIOS, feitos para este jogo por ferramentas/gerar_chefes.ps1 (sem licença de terceiros):
-  sprites/rainha_0..6.png, capataz_0..6.png, maquina_0..6.png   os três chefes
 
 Sons e música (todos CC0; os pacotes originais ficam em arte_fonte/sons/, fora do jogo distribuído;
 escolhidos e preparados por ferramentas/preparar_sons.ps1)

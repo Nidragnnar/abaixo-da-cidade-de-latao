@@ -665,7 +665,7 @@ int main(int argc, char** argv) {
             std::vector<render::Sprite> sprites;
             for (const jogo::CoisaNoChao& c : partida->chao()) sprites.push_back(spriteDoChao(c, partida->andar().grade));
             const glm::vec2 elevador = glm::vec2(partida->andar().elevador) + 0.5f;
-            sprites.push_back({elevador, render::SpriteElevador, 0.9f, 1.0f, mundo::alturaDoChao(partida->andar().grade, elevador)});
+            sprites.push_back({elevador, render::SpriteElevador, 1.0f, 1.0f, mundo::alturaDoChao(partida->andar().grade, elevador)});
             if (partida->andar().chave)
                 sprites.push_back({*partida->andar().chave, render::SpriteValvulaChave, 0.4f, 0.4f,
                                    mundo::alturaDoChao(partida->andar().grade, *partida->andar().chave)});
@@ -689,7 +689,7 @@ int main(int argc, char** argv) {
             for (const mundo::Luz& l : partida->andar().luzes)
                 lampioes.push_back(l.tipo == mundo::TipoLuz::Lustre
                                        ? render::Sprite{{l.posicao.x, l.posicao.z}, render::SPRITE_LUSTRE, 0.5f, 0.5f, l.posicao.y - 0.15f}
-                                       : render::Sprite{{l.posicao.x, l.posicao.z}, render::SPRITE_LAMPIAO, 0.25f, 0.3f, l.posicao.y - 0.15f});
+                                       : render::Sprite{{l.posicao.x, l.posicao.z}, render::SPRITE_LAMPIAO, 0.3f, 0.3f, l.posicao.y - 0.15f});
             for (const jogo::Explosao& x : partida->explosoes()) {  // explosões das bombas, acesas como os lampiões
                 const glm::vec2 onde{x.posicao.x, x.posicao.z};
                 const float base = std::max(x.posicao.y - 0.5f, mundo::alturaDoChao(partida->andar().grade, onde));
