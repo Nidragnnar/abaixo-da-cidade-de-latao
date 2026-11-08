@@ -48,10 +48,10 @@ const std::vector<NomeTecla>& tabela() {
             {76, "delete", "Delete"},
             {77, "end", "End"},
             {78, "pgdn", "Page Down"},
-            {79, "seta_direita", "Seta direita"},
-            {80, "seta_esquerda", "Seta esquerda"},
-            {81, "seta_baixo", "Seta para baixo"},
-            {82, "seta_cima", "Seta para cima"},
+            {79, "seta_direita", "Seta dir."},
+            {80, "seta_esquerda", "Seta esq."},
+            {81, "seta_baixo", "Seta baixo"},
+            {82, "seta_cima", "Seta cima"},
             {84, "num_barra", "Num /"},
             {85, "num_asterisco", "Num *"},
             {86, "num_menos", "Num -"},
@@ -66,11 +66,11 @@ const std::vector<NomeTecla>& tabela() {
             {228, "ctrl_dir", "Ctrl dir."},
             {229, "shift_dir", "Shift dir."},
             {230, "alt_dir", "Alt Gr"},
-            {BOTAO_MOUSE + 1, "mouse1", "Botão esquerdo"},
-            {BOTAO_MOUSE + 2, "mouse2", "Botão do meio"},
-            {BOTAO_MOUSE + 3, "mouse3", "Botão direito"},
-            {BOTAO_MOUSE + 4, "mouse4", "Botão lateral 1"},
-            {BOTAO_MOUSE + 5, "mouse5", "Botão lateral 2"},
+            {BOTAO_MOUSE + 1, "mouse_esq", "Mouse esq."},
+            {BOTAO_MOUSE + 2, "mouse_meio", "Mouse meio"},
+            {BOTAO_MOUSE + 3, "mouse_dir", "Mouse dir."},
+            {BOTAO_MOUSE + 4, "mouse_lateral1", "Mouse lat. 1"},
+            {BOTAO_MOUSE + 5, "mouse_lateral2", "Mouse lat. 2"},
         };
         v.insert(v.end(), outras.begin(), outras.end());
         for (int i = 0; i < 12; ++i) {
@@ -96,8 +96,8 @@ struct DadosAcao {
     std::string_view id, nome;
 };
 constexpr DadosAcao ACOES[TOTAL_ACOES] = {
-    {"frente", "Andar para frente"}, {"tras", "Andar para trás"},  {"esquerda", "Andar à esquerda"},
-    {"direita", "Andar à direita"},  {"pular", "Pular"},           {"usar", "Usar"},
+    {"frente", "Ir para frente"},   {"tras", "Ir para trás"},     {"esquerda", "Ir à esquerda"},
+    {"direita", "Ir à direita"},     {"pular", "Pular"},           {"usar", "Usar"},
     {"trocar_arma", "Trocar arma"},  {"recarregar", "Recarregar"}, {"inventario", "Inventário"},
     {"mapa", "Mapa"},                {"item1", "Item rápido 1"},   {"item2", "Item rápido 2"},
     {"item3", "Item rápido 3"},      {"item4", "Item rápido 4"},   {"atacar", "Atacar"},
@@ -161,6 +161,8 @@ std::string_view idDaTecla(int t) {
 std::optional<int> teclaDoId(std::string_view id) {
     for (const NomeTecla& n : tabela())
         if (n.id == id) return n.tecla;
+    // Ids antigos (numeração do SDL: mouse2 é o meio, mouse3 o direito) continuam valendo na leitura
+    if (id.size() == 6 && id.starts_with("mouse") && id[5] >= '1' && id[5] <= '5') return BOTAO_MOUSE + (id[5] - '0');
     return std::nullopt;
 }
 

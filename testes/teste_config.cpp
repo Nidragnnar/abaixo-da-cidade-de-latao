@@ -195,8 +195,8 @@ TEST_CASE("config: teclas vão e voltam") {
     CHECK(l.config.teclas.tecla == c.teclas.tecla);
     std::ifstream f(pasta.config());
     const std::string texto((std::istreambuf_iterator<char>(f)), {});
-    CHECK(texto.find("tecla_pular=mouse4\n") != std::string::npos);
-    CHECK(texto.find("tecla_atacar=mouse1\n") != std::string::npos);
+    CHECK(texto.find("tecla_pular=mouse_lateral1\n") != std::string::npos);
+    CHECK(texto.find("tecla_atacar=mouse_esq\n") != std::string::npos);
 }
 
 TEST_CASE("config: tecla inválida volta ao padrão só dela") {

@@ -388,9 +388,9 @@ TEST_CASE("Teclas... abre a tela das teclas") {
     CHECK(m.titulo() == "Teclas");
     const auto itens = m.itens(c);
     REQUIRE(itens.size() == 17);
-    CHECK(itens[0] == "Andar para frente: W");
+    CHECK(itens[0] == "Ir para frente: W");
     CHECK(itens[4] == "Pular: Espaço");
-    CHECK(itens[14] == "Atacar: Botão esquerdo");
+    CHECK(itens[14] == "Atacar: Mouse esq.");
     CHECK(itens[15] == "Restaurar padrão");
     CHECK(itens[16] == "Voltar");
     CHECK(m.atualizar(voltar(), c) == ui::Acao::SalvarOpcoes);
@@ -496,4 +496,41 @@ TEST_CASE("Controle... mostra o esquema e volta") {
     CHECK(m.atualizar(voltar(), c) == ui::Acao::Nenhuma);
     CHECK(m.tela() == ui::Tela::Opcoes);
     CHECK(m.selecionado() == 9);
+}
+
+TEST_CASE("clique duplo na linha não vira a tecla") {
+    ui::Menus m;
+    jogo::Config c;
+    abrirTeclas(m, c);
+    ui::EntradaMenu abre = confirmar();
+    abre.tempo = 10.0;
+    m.atualizar(abre, c);
+    REQUIRE(m.esperandoTecla());
+    ui::EntradaMenu segundo = tecla(jogo::BOTAO_MOUSE + 1);
+    segundo.tempo = 10.2;  // o segundo clique do clique duplo
+    m.atualizar(segundo, c);
+    CHECK(m.esperandoTecla());
+    CHECK(c.teclas.de(jogo::AcaoJogo::Frente) == 26);
+    ui::EntradaMenu depois = tecla(jogo::BOTAO_MOUSE + 1);
+    depois.tempo = 10.5;
+    CHECK(m.atualizar(depois, c) == ui::Acao::OpcoesMudaram);
+    CHECK(c.teclas.de(jogo::AcaoJogo::Frente) == jogo::BOTAO_MOUSE + 1);
+    // tecla do teclado logo depois de abrir vale
+    m.atualizar(abre, c);
+    ui::EntradaMenu rapida = tecla(9);
+    rapida.tempo = 10.1;
+    CHECK(m.atualizar(rapida, c) == ui::Acao::OpcoesMudaram);
+}
+
+TEST_CASE("aviso da espera cita o B no controle") {
+    ui::Menus m;
+    jogo::Config c;
+    abrirTeclas(m, c);
+    m.definirNoControle(true);
+    m.atualizar(confirmar(), c);
+    CHECK(m.aviso() == "Aperte a tecla ou o botão (B cancela)");
+    m.definirNoControle(false);
+    CHECK(m.aviso() == "Aperte a tecla ou o botão (Esc cancela)");
+    m.definirNoControle(true);
+    CHECK(m.aviso() == "Aperte a tecla ou o botão (B cancela)");
 }

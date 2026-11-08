@@ -78,6 +78,7 @@ struct Opcoes {
     std::optional<int> vidaChefe;        // --vida-chefe <n>: o chefe do andar inicial começa com essa vida (testes)
     bool gravarPartida = false;          // --gravar-partida: monta a partida pedida, grava partida.sav e sai (cenários)
     std::optional<jogo::Dificuldade> dificuldade;  // --dificuldade facil|normal|dificil|pesadelo: no lugar da do config
+    std::string dificuldadeErrada;                 // valor de --dificuldade que não existe (vai para o log)
 
     // Começa direto na partida, sem o menu (cenários de teste e roteiros)
     bool direto() const {
@@ -109,7 +110,10 @@ Opcoes lerOpcoes(int argc, char** argv) {
         else if (arg == "--tela" && temValor) o.tela = argv[++i];
         else if (arg == "--vida-chefe" && temValor) o.vidaChefe = std::stoi(argv[++i]);
         else if (arg == "--gravar-partida") o.gravarPartida = true;
-        else if (arg == "--dificuldade" && temValor) o.dificuldade = jogo::dificuldadeDoId(argv[++i]);
+        else if (arg == "--dificuldade" && temValor) {
+            o.dificuldade = jogo::dificuldadeDoId(argv[++i]);
+            if (!o.dificuldade) o.dificuldadeErrada = argv[i];
+        }
         else if (arg == "--inimigo" && i + 3 < argc) {
             const char letra = argv[++i][0];
             const float x = std::stof(argv[++i]);
@@ -344,6 +348,9 @@ int main(int argc, char** argv) {
     try {
         const Opcoes opcoes = lerOpcoes(argc, argv);
         if (!opcoes.dados.empty()) plataforma::definirPastaDeDados(opcoes.dados);
+        if (!opcoes.dificuldadeErrada.empty())
+            plataforma::logar("--dificuldade " + opcoes.dificuldadeErrada +
+                              " não existe (facil, normal, dificil, pesadelo); vale a do config");
         const uint32_t sementeInicial = opcoes.demo.value_or(opcoes.semente.value_or(std::random_device{}()));
         if (opcoes.descrever) {
             descreverAndar(sementeInicial, opcoes.andar);
@@ -618,6 +625,7 @@ int main(int argc, char** argv) {
                 const glm::vec2 mouse = render::janelaParaTelaBaixa(entrada.posicaoMouse(), {janelaL, janelaA},
                                                                     janela.tamanhoDesenhavel(), telaL, telaA);
                 ui::EntradaMenu em = entrada.coletarMenu();
+                menus.definirNoControle(entrada.ultimoFoiControle());
                 em.itemSobMouse = render::itemSob(itensNaTela, mouse);
                 // Na captura o teclado é ignorado; na tela de fim, só depois de meio segundo
                 if (automatico || (telaAtual == ui::Tela::Fim && tempoMorto <= 0.5f)) em = {};

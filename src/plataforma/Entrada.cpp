@@ -77,6 +77,7 @@ void Entrada::modoMenu(bool sim) {
 
 ui::EntradaMenu Entrada::coletarMenu() {
     ui::EntradaMenu m = std::move(menu_);
+    m.tempo = SDL_GetTicks() / 1000.0;
     menu_ = {};
     return m;
 }
@@ -161,6 +162,12 @@ void Entrada::processarEvento(const SDL_Event& e) {
         case SDL_MOUSEWHEEL:
             if (capturado_ && e.wheel.y != 0) trocarPendente_ = true;
             break;
+        case SDL_KEYUP:
+            if (modoMenu_ && e.key.keysym.scancode == modificadorNoMenu_) {
+                if (!menu_.teclaFisica) menu_.teclaFisica = modificadorNoMenu_;
+                modificadorNoMenu_ = 0;
+            }
+            break;
         case SDL_TEXTINPUT:
             if (modoMenu_) menu_.texto += e.text.text;
             break;
@@ -168,7 +175,16 @@ void Entrada::processarEvento(const SDL_Event& e) {
             ultimoFoiControle_ = false;
             if (modoMenu_) {
                 teclaNoMenu(e.key);
-                if (!e.key.repeat && !menu_.teclaFisica) menu_.teclaFisica = e.key.keysym.scancode;  // tela Teclas
+                if (!e.key.repeat) {
+                    // Ctrl, Shift e Alt só valem ao soltar, sem outra tecla no meio (Alt+Tab não grava o Alt)
+                    const int t = e.key.keysym.scancode;
+                    const bool modificador = t >= SDL_SCANCODE_LCTRL && t <= SDL_SCANCODE_RGUI;
+                    if (modificador) modificadorNoMenu_ = t;
+                    else {
+                        modificadorNoMenu_ = 0;
+                        if (!menu_.teclaFisica) menu_.teclaFisica = t;  // tela Teclas
+                    }
+                }
                 break;
             }
             if (e.key.keysym.sym == SDLK_ESCAPE && !e.key.repeat) {
@@ -182,6 +198,7 @@ void Entrada::processarEvento(const SDL_Event& e) {
         case SDL_WINDOWEVENT:
             // Perder o foco no jogo pausa e solta o mouse (seção 11 da spec)
             if (e.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
+                modificadorNoMenu_ = 0;  // Alt+Tab: o Alt que desceu não vira tecla
                 if (capturado_) capturar(false);
                 if (!modoMenu_) pausaPendente_ = true;
             }

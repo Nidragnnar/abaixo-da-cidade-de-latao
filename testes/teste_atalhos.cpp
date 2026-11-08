@@ -52,8 +52,12 @@ TEST_CASE("nomes e ids vão e voltam") {
     CHECK(jogo::nomeDaTecla(44) == "Espaço");
     CHECK(jogo::idDaTecla(44) == "espaco");
     CHECK(jogo::idDaTecla(225) == "shift_esq");
-    CHECK(jogo::nomeDaTecla(jogo::BOTAO_MOUSE + 1) == "Botão esquerdo");
-    CHECK(jogo::idDaTecla(jogo::BOTAO_MOUSE + 4) == "mouse4");
+    CHECK(jogo::nomeDaTecla(jogo::BOTAO_MOUSE + 1) == "Mouse esq.");
+    CHECK(jogo::idDaTecla(jogo::BOTAO_MOUSE + 4) == "mouse_lateral1");
+    // ids antigos (numeração do SDL) continuam valendo na leitura
+    CHECK(jogo::teclaDoId("mouse3") == jogo::BOTAO_MOUSE + 3);
+    CHECK(jogo::teclaDoId("mouse_dir") == jogo::BOTAO_MOUSE + 3);
+    CHECK(jogo::idDaTecla(jogo::BOTAO_MOUSE + 2) == "mouse_meio");
     CHECK(jogo::nomeDaTecla(26) == "W");
     CHECK(jogo::idDaTecla(58) == "f1");
     CHECK_FALSE(jogo::teclaDoId("banana"));

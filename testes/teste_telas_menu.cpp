@@ -175,3 +175,14 @@ TEST_CASE("tela Teclas cabe no painel, esperando ou não") {
     for (const auto& t : m.itens(c)) CHECK(render::larguraTexto(t, 1) <= 264 + 40);
     CHECK(render::larguraTexto(m.aviso(), 1) <= 480 - 16);
 }
+
+TEST_CASE("toda linha da tela Teclas cabe no destaque, ao lado do >") {
+    for (int a = 0; a < jogo::TOTAL_ACOES; ++a)
+        for (int t = 0; t < jogo::BOTAO_MOUSE + 10; ++t) {
+            if (!jogo::teclaAceita(t)) continue;
+            const std::string linha = std::string(jogo::nomeDaAcao(static_cast<jogo::AcaoJogo>(a))) + ": " +
+                                      std::string(jogo::nomeDaTecla(t));
+            INFO(linha);
+            CHECK(render::larguraTexto(linha, 1) <= 264 - 32);
+        }
+}

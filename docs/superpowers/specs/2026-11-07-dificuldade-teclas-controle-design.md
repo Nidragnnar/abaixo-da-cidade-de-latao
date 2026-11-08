@@ -59,7 +59,7 @@ e atacar (botão esquerdo do mouse).
 - **Conflito:** se a tecla já é de outra ação, as duas trocam; nenhuma ação fica sem tecla.
 - **Não aceitas:** Esc (cancela) e a roda do mouse.
 - **Config:** uma linha por ação, `tecla_<acao>=<nome>`, com nomes próprios do jogo, sem acento (`w`, `espaco`,
-  `shift_esq`, `f1`, `mouse1`…`mouse5`); a tela mostra nomes legíveis ("Espaço", "Shift esq.", "Botão esquerdo").
+  `shift_esq`, `f1`, `mouse_esq`, `mouse_meio`, `mouse_dir`, `mouse_lateral1`, `mouse_lateral2`; os antigos `mouse1`…`mouse5`, na numeração do SDL, ainda são lidos); a tela mostra nomes legíveis ("Espaço", "Shift esq.", "Mouse esq.").
   Teclas fora da tabela de nomes (raras, de teclados especiais) não são aceitas na troca. **Nome inválido ou repetido** volta ao padrão só daquela ação (sem estragar o resto
   do config, ao contrário das outras opções); ausente = padrão.
 - **Textos que citam teclas** usam a tecla atual: "Inventário (I fecha)", "Sem munição — R para recarregar",

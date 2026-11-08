@@ -26,6 +26,7 @@ struct EntradaMenu {
     bool clique = false, cliqueDireito = false;
     std::string texto;  // caracteres digitados (só dígitos contam, e só na semente)
     std::optional<int> teclaFisica;  // primeira tecla ou botão do mouse que desceu (jogo::Atalhos; tela Teclas)
+    double tempo = 0;  // segundos desde o começo do jogo (o 2º clique de um clique duplo não vira a tecla)
 };
 
 // Navegação das telas: seleção, confirmação, ajuste das opções e semente digitada (puro, sem SDL)
@@ -44,6 +45,8 @@ public:
     int selecionado() const { return selecionado_; }
     // Tela Teclas: esperando a nova tecla da ação selecionada (Esc cancela)
     bool esperandoTecla() const { return esperandoTecla_; }
+    // A última entrada veio do controle: o aviso da espera diz "B cancela" em vez de "Esc cancela"
+    void definirNoControle(bool sim);
     // "Abaixo da Cidade de Latão", "Pausa", "Opções", "Placar" (vazio no jogo e no fim)
     std::string_view titulo() const;
     // Texto embaixo dos itens (partida salva que não abriu, salvamento que falhou); some ao trocar de tela
@@ -63,6 +66,8 @@ private:
     bool confirmandoAbandono_ = false;
     bool confirmandoNovo_ = false;  // "Novo jogo" com partida salva: segundo Enter apaga e começa
     bool esperandoTecla_ = false;
+    double inicioEspera_ = 0, tempo_ = 0;  // quando a espera abriu e o tempo do quadro atual
+    bool noControle_ = false;
     bool partidaSalva_ = false;
     int base() const { return partidaSalva_ ? 1 : 0; }  // "Continuar partida" empurra os itens do principal
     std::string aviso_;

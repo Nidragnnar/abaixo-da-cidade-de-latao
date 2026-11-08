@@ -12,6 +12,11 @@ constexpr int ITEM_OPCOES_PRINCIPAL = 2, ITEM_OPCOES_PAUSA = 2, ITEM_ABANDONAR =
 constexpr int ITEM_SEMENTE = 4, ITEM_DIFICULDADE = 5, ITEM_INVERTER = 7, ITEM_TECLAS = 8, ITEM_CONTROLE = 9,
               ITEM_VOLTAR_OPCOES = 10;
 constexpr int ITEM_RESTAURAR = jogo::TOTAL_ACOES, ITEM_VOLTAR_TECLAS = jogo::TOTAL_ACOES + 1;  // tela Teclas
+constexpr double ESPERA_CLIQUE_DUPLO = 0.4;  // segundos em que o mouse não vale depois de abrir a espera
+
+std::string_view textoEspera(bool noControle) {
+    return noControle ? "Aperte a tecla ou o botão (B cancela)" : "Aperte a tecla ou o botão (Esc cancela)";
+}
 
 // Tela Controle: o esquema fixo (seção 4 da spec), com o nome do PlayStation entre parênteses
 const std::vector<std::string>& esquemaControle() {
@@ -157,6 +162,11 @@ Acao Menus::digitarSemente(const EntradaMenu& e, jogo::Config& c) {
     return mudou ? Acao::OpcoesMudaram : Acao::Nenhuma;
 }
 
+void Menus::definirNoControle(bool sim) {
+    if (esperandoTecla_ && aviso_ == textoEspera(noControle_)) aviso_ = std::string(textoEspera(sim));
+    noControle_ = sim;
+}
+
 Acao Menus::esperarTecla(const EntradaMenu& e, jogo::Config& c) {
     if (e.voltar) {  // Esc cancela
         esperandoTecla_ = false;
@@ -164,6 +174,8 @@ Acao Menus::esperarTecla(const EntradaMenu& e, jogo::Config& c) {
         return Acao::Nenhuma;
     }
     if (!e.teclaFisica) return Acao::Nenhuma;
+    // O segundo clique de um clique duplo (o primeiro abriu a espera) não vira a tecla
+    if (*e.teclaFisica >= jogo::BOTAO_MOUSE && e.tempo - inicioEspera_ < ESPERA_CLIQUE_DUPLO) return Acao::Nenhuma;
     if (!jogo::teclaAceita(*e.teclaFisica)) {
         aviso_ = "Essa tecla não pode ser usada";
         return Acao::Nenhuma;
@@ -235,7 +247,8 @@ Acao Menus::confirmarItem(jogo::Config& c) {
             if (selecionado_ < jogo::TOTAL_ACOES) {
                 // A tecla nova vem dos próximos quadros (a que abriu a espera não conta)
                 esperandoTecla_ = true;
-                aviso_ = "Aperte a tecla ou o botão (Esc cancela)";
+                aviso_ = std::string(textoEspera(noControle_));
+                inicioEspera_ = tempo_;
                 return Acao::Nenhuma;
             }
             if (selecionado_ == ITEM_RESTAURAR) {
@@ -250,6 +263,7 @@ Acao Menus::confirmarItem(jogo::Config& c) {
 }
 
 Acao Menus::atualizar(const EntradaMenu& e, jogo::Config& c) {
+    tempo_ = e.tempo;
     switch (tela_) {
         case Tela::Jogo:
             if (e.voltar) irPara(Tela::Pausa);

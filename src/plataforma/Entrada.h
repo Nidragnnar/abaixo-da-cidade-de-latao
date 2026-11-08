@@ -106,6 +106,7 @@ private:
     bool inverterVertical_ = false;
     bool ultimoFoiControle_ = false;
     glm::ivec2 ondeLevouMouse_{-1};  // o movimento que o SDL_WarpMouseInWindow gera não conta como mouse
+    int modificadorNoMenu_ = 0;  // Ctrl/Shift/Alt apertado nos menus, esperando soltar para virar a tecla
 };
 
 }
