@@ -8,7 +8,8 @@ autômatos que perderam o juízo. Cada descida é diferente, a morte é permanen
 
 ## Jogar (Windows 10/11, 64 bits)
 
-1. Baixe `AbaixoDaCidadeDeLatao-v1.zip` na página de [Releases](../../releases).
+1. Baixe o zip da versão mais recente (`AbaixoDaCidadeDeLatao-v1.4.zip`, por exemplo) na página de
+   [Releases](../../releases).
 2. Clique com o botão direito no zip e escolha **Extrair tudo**.
 3. Abra a pasta e dê dois cliques em `AbaixoDaCidadeDeLatao.exe`.
 
