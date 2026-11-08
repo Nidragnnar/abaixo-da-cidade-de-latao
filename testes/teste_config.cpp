@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <string>
 
+#include <iterator>
+
 #include "jogo/Config.h"
 
 namespace {
@@ -143,4 +145,80 @@ TEST_CASE("gravação que falha não deixa o .tmp para trás") {
     std::filesystem::path tmp = pasta.config();
     tmp += ".tmp";
     CHECK_FALSE(std::filesystem::exists(tmp));
+}
+
+TEST_CASE("config: dificuldade vai e volta") {
+    PastaTemporaria pasta;
+    CHECK(jogo::lerConfig(pasta.config()).config.dificuldade == jogo::Dificuldade::Normal);
+    jogo::Config c;
+    c.dificuldade = jogo::Dificuldade::Pesadelo;
+    REQUIRE(jogo::gravarConfig(pasta.config(), c));
+    const auto l = jogo::lerConfig(pasta.config());
+    CHECK_FALSE(l.estavaCorrompido);
+    CHECK(l.config.dificuldade == jogo::Dificuldade::Pesadelo);
+    pasta.escrever("sensibilidade=7\n");  // ausente: Normal
+    CHECK(jogo::lerConfig(pasta.config()).config.dificuldade == jogo::Dificuldade::Normal);
+}
+
+TEST_CASE("config: dificuldade inválida corrompe") {
+    PastaTemporaria pasta;
+    pasta.escrever("dificuldade=medio\n");
+    CHECK(jogo::lerConfig(pasta.config()).estavaCorrompido);
+}
+
+TEST_CASE("config: controle vai e volta") {
+    PastaTemporaria pasta;
+    jogo::Config c;
+    CHECK(c.sensibilidadeControle == 5);
+    CHECK_FALSE(c.inverterVertical);
+    c.sensibilidadeControle = 8;
+    c.inverterVertical = true;
+    REQUIRE(jogo::gravarConfig(pasta.config(), c));
+    const auto l = jogo::lerConfig(pasta.config());
+    CHECK_FALSE(l.estavaCorrompido);
+    CHECK(l.config.sensibilidadeControle == 8);
+    CHECK(l.config.inverterVertical);
+    pasta.escrever("sensibilidade_controle=11\n");
+    CHECK(jogo::lerConfig(pasta.config()).estavaCorrompido);
+    pasta.escrever("inverter_vertical=2\n");
+    CHECK(jogo::lerConfig(pasta.config()).estavaCorrompido);
+}
+
+TEST_CASE("config: teclas vão e voltam") {
+    PastaTemporaria pasta;
+    jogo::Config c;
+    CHECK(c.teclas.tecla == jogo::Atalhos::padrao().tecla);
+    c.teclas.definir(jogo::AcaoJogo::Pular, jogo::BOTAO_MOUSE + 4);
+    REQUIRE(jogo::gravarConfig(pasta.config(), c));
+    const auto l = jogo::lerConfig(pasta.config());
+    CHECK_FALSE(l.estavaCorrompido);
+    CHECK(l.config.teclas.tecla == c.teclas.tecla);
+    std::ifstream f(pasta.config());
+    const std::string texto((std::istreambuf_iterator<char>(f)), {});
+    CHECK(texto.find("tecla_pular=mouse4\n") != std::string::npos);
+    CHECK(texto.find("tecla_atacar=mouse1\n") != std::string::npos);
+}
+
+TEST_CASE("config: tecla inválida volta ao padrão só dela") {
+    PastaTemporaria pasta;
+    pasta.escrever("sensibilidade=7\ntecla_pular=banana\ntecla_usar=f\ntecla_mapa=esc\ntecla_voar=x\n");
+    const auto l = jogo::lerConfig(pasta.config());
+    CHECK_FALSE(l.estavaCorrompido);
+    CHECK(l.config.sensibilidade == 7);
+    CHECK(l.config.teclas.de(jogo::AcaoJogo::Pular) == 44);
+    CHECK(l.config.teclas.de(jogo::AcaoJogo::Usar) == 9);  // F
+    CHECK(l.config.teclas.de(jogo::AcaoJogo::Mapa) == 43);
+}
+
+TEST_CASE("config: duas ações na mesma tecla") {
+    PastaTemporaria pasta;
+    pasta.escrever("tecla_usar=espaco\n");  // a do arquivo fica; a de fábrica que repete sai
+    auto l = jogo::lerConfig(pasta.config());
+    CHECK(l.config.teclas.de(jogo::AcaoJogo::Usar) == 44);
+    CHECK(l.config.teclas.de(jogo::AcaoJogo::Pular) != 44);
+    CHECK(jogo::teclaAceita(l.config.teclas.de(jogo::AcaoJogo::Pular)));
+    pasta.escrever("tecla_pular=espaco\ntecla_usar=espaco\n");  // as duas no arquivo: a segunda volta ao padrão
+    l = jogo::lerConfig(pasta.config());
+    CHECK(l.config.teclas.de(jogo::AcaoJogo::Pular) == 44);
+    CHECK(l.config.teclas.de(jogo::AcaoJogo::Usar) == 8);
 }

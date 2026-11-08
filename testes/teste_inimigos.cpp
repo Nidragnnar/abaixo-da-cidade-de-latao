@@ -1,5 +1,10 @@
 #include <doctest/doctest.h>
 
+#include <algorithm>
+#include <cmath>
+#include <ostream>
+
+#include "jogo/Dificuldade.h"
 #include "jogo/Inimigos.h"
 #include "mundo/Gerador.h"
 
@@ -149,4 +154,33 @@ TEST_CASE("marcas R, P e M viram chefes") {
     CHECK(v[0].tipo == jogo::TipoInimigo::RainhaRatos);
     CHECK(v[1].tipo == jogo::TipoInimigo::Capataz);
     CHECK(v[2].tipo == jogo::TipoInimigo::GrandeMaquina);
+}
+
+TEST_CASE("dificuldade multiplica vida e dano, nunca abaixo de 1") {
+    const auto n = jogo::criarInimigo(jogo::TipoInimigo::Rato, {0, 0}, 3);
+    const auto f = jogo::criarInimigo(jogo::TipoInimigo::Rato, {0, 0}, 3, jogo::Dificuldade::Facil);
+    const auto p = jogo::criarInimigo(jogo::TipoInimigo::Rato, {0, 0}, 3, jogo::Dificuldade::Pesadelo);
+    CHECK(f.vidaMaxima == std::max(1, static_cast<int>(std::lround(n.vidaMaxima * 0.6))));
+    CHECK(f.vida == f.vidaMaxima);
+    CHECK(p.vidaMaxima == std::max(1, static_cast<int>(std::lround(n.vidaMaxima * 1.8))));
+    CHECK(p.danoMax == std::max(1, static_cast<int>(std::lround(n.danoMax * 1.8))));
+    CHECK(f.danoMin >= 1);
+}
+
+TEST_CASE("chefes também seguem a dificuldade") {
+    const auto n = jogo::criarInimigo(jogo::TipoInimigo::Capataz, {0, 0}, 4);
+    const auto d = jogo::criarInimigo(jogo::TipoInimigo::Capataz, {0, 0}, 4, jogo::Dificuldade::Dificil);
+    CHECK(d.vidaMaxima == static_cast<int>(std::lround(n.vidaMaxima * 1.4)));
+    CHECK(d.danoMax == static_cast<int>(std::lround(n.danoMax * 1.4)));
+}
+
+TEST_CASE("ids da dificuldade vão e voltam") {
+    for (int i = 0; i < jogo::TOTAL_DIFICULDADES; ++i) {
+        const auto d = static_cast<jogo::Dificuldade>(i);
+        CHECK(jogo::dificuldadeDoId(jogo::idDa(d)) == d);
+    }
+    CHECK_FALSE(jogo::dificuldadeDoId("medio"));
+    CHECK(jogo::letraDa(jogo::Dificuldade::Pesadelo) == 'P');
+    CHECK(jogo::nomeDa(jogo::Dificuldade::Facil) == "Fácil");
+    CHECK(jogo::multiplicadorPontos(jogo::Dificuldade::Dificil) == doctest::Approx(1.5));
 }

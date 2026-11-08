@@ -34,6 +34,7 @@ add_library(nucleo STATIC
     src/jogo/Armas.cpp
     src/jogo/Placar.cpp
     src/jogo/ArquivoTexto.cpp
+    src/jogo/Atalhos.cpp
     src/jogo/Config.cpp
     src/jogo/Sons.cpp
     src/jogo/Demo.cpp
@@ -41,6 +42,7 @@ add_library(nucleo STATIC
     src/mundo/Terreno.cpp
     src/mundo/Relevo.cpp
     src/render/Luzes.cpp
+    src/ui/Controle.cpp
     src/ui/Menus.cpp
     src/jogo/Itens.cpp
     src/jogo/Inventario.cpp

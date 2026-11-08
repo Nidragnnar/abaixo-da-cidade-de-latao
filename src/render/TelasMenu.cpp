@@ -44,10 +44,17 @@ std::string cortar(std::string s, float largura) {
 
 }
 
-std::vector<Retangulo> layoutMenu(int quantidade, int telaL, int /*telaA*/) {
+std::vector<Retangulo> layoutMenu(int quantidade, int telaL, int telaA) {
+    // Lista longa (Opções, Teclas): sobe para perto do título e aperta o espaço entre os itens
+    int inicio = Y_ITENS, entre = ENTRE_ITENS, altura = ALTURA_ITEM;
+    if (quantidade > 0 && Y_ITENS + quantidade * ENTRE_ITENS > telaA - 24) {
+        inicio = Y_TITULO + 20;
+        entre = std::max(10, (telaA - 24 - inicio) / quantidade);
+        altura = std::min(ALTURA_ITEM, entre);
+    }
     std::vector<Retangulo> r;
     for (int i = 0; i < quantidade; ++i)
-        r.push_back({(telaL - LARGURA_ITEM) / 2, Y_ITENS + i * ENTRE_ITENS - 2, LARGURA_ITEM, ALTURA_ITEM});
+        r.push_back({(telaL - LARGURA_ITEM) / 2, inicio + i * entre - 2, LARGURA_ITEM, altura});
     return r;
 }
 
@@ -61,7 +68,10 @@ ElementosHud construirMenu(const VistaMenu& v, int telaL, int telaA) {
     ElementosHud e;
     const auto itens = layoutMenu(static_cast<int>(v.itens.size()), telaL, telaA);
     const int largura = std::max(LARGURA_ITEM + 40, static_cast<int>(larguraTexto(v.titulo, 2)) + 24);
-    const int baixo = itens.empty() ? Y_ITENS : itens.back().y + itens.back().altura + 14;
+    const int fimItens = itens.empty() ? Y_ITENS : itens.back().y + itens.back().altura;
+    // Na lista longa o aviso encosta nos itens para caber na tela
+    const int yAviso = std::min(fimItens + 20, telaA - 10);
+    const int baixo = std::min(telaA, fimItens + 14);
     retangulo(e.cores, {(telaL - largura) / 2, Y_TITULO - 14, largura, baixo - (Y_TITULO - 14)}, COR_PAINEL);
     centralizado(e.texto, v.titulo, static_cast<float>(Y_TITULO), telaL, 2, COR_LATAO);
     for (size_t i = 0; i < v.itens.size(); ++i) {
@@ -70,7 +80,7 @@ ElementosHud construirMenu(const VistaMenu& v, int telaL, int telaA) {
                      selecionado ? COR_LATAO : COR_TEXTO);
         if (selecionado) texto(e.texto, ">", {static_cast<float>(itens[i].x + 4), static_cast<float>(itens[i].y + 2)}, 1, COR_LATAO);
     }
-    if (!v.aviso.empty()) centralizado(e.texto, v.aviso, static_cast<float>(baixo + 6), telaL, 1, COR_LATAO);
+    if (!v.aviso.empty()) centralizado(e.texto, v.aviso, static_cast<float>(yAviso), telaL, 1, COR_LATAO);
     // Destaque por último (o teste e o laço contam com isso); desenhado antes do texto, que vem em outra lista
     if (v.selecionado >= 0 && v.selecionado < static_cast<int>(itens.size()))
         retangulo(e.cores, itens[static_cast<size_t>(v.selecionado)], COR_DESTAQUE);
@@ -90,7 +100,9 @@ ElementosHud construirPlacar(const std::vector<jogo::RegistroPlacar>& registros,
     for (size_t i = 0; i < registros.size() && i < jogo::TAMANHO_PLACAR; ++i) {
         const jogo::RegistroPlacar& r = registros[i];
         const std::string linha = cortar(
-            std::format("{}. {}  andar {}  nível {}  {}", i + 1, r.pontuacao, r.andar, r.nivel, r.causa), maximo);
+            std::format("{}. {} {}  andar {}  nível {}  {}", i + 1, r.pontuacao, jogo::letraDa(r.dificuldade), r.andar,
+                        r.nivel, r.causa),
+            maximo);
         texto(e.texto, linha, {16, 44 + static_cast<float>(i) * 18}, 1, i == 0 ? COR_LATAO : COR_TEXTO);
     }
     const Retangulo voltar = layoutPlacar(telaL, telaA)[0];

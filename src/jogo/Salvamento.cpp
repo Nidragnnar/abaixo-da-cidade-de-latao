@@ -84,7 +84,8 @@ Item lerItem(Linha& l) {
 std::optional<std::string> Salvamento::escrever(const Partida& p) {
     if (p.morto_ || p.venceu_ || p.desdeQuedaFinal_) return std::nullopt;
     const mundo::Andar original = mundo::gerarAndar(p.semente_, p.andar_.numero);
-    std::string s = std::format("versao {}\npartida {} {}\n", VERSAO_SALVAMENTO, p.semente_, p.andar_.numero);
+    std::string s = std::format("versao {}\npartida {} {}\ndificuldade {}\n", VERSAO_SALVAMENTO, p.semente_,
+                                p.andar_.numero, static_cast<int>(p.dificuldade_));
     const Jogador& j = p.jogador_;
     s += std::format("jogador {} {} {} {} {} {} {} {}\n", j.posicao.x, j.posicao.y, j.angulo, j.inclinacao, j.corpo.pes,
                      j.corpo.velocidade, j.corpo.noChao ? 1 : 0, j.corpo.maisAlto);
@@ -140,7 +141,10 @@ std::optional<Partida> Salvamento::ler(std::string_view texto) {
         if (!linha.empty()) linhas.push_back(linha);
         inicio = fim + 1;
     }
-    if (linhas.size() < 3 || linhas.front() != std::format("versao {}", VERSAO_SALVAMENTO) || linhas.back() != "fim")
+    // Versão 1 (v1.4) não tem a linha da dificuldade: vale Normal
+    const bool versao1 = !linhas.empty() && linhas.front() == "versao 1";
+    if (linhas.size() < 3 || (!versao1 && linhas.front() != std::format("versao {}", VERSAO_SALVAMENTO)) ||
+        linhas.back() != "fim")
         return std::nullopt;
 
     Linha cabecalho(linhas[1]);
@@ -148,9 +152,19 @@ std::optional<Partida> Salvamento::ler(std::string_view texto) {
     const auto semente = cabecalho.numero<uint32_t>(0, 0xFFFFFFFFu);
     const int numero = cabecalho.inteiro(1, 99);
     if (!cabecalho.ok() || !cabecalho.acabou()) return std::nullopt;
+    Dificuldade dificuldade = Dificuldade::Normal;
+    size_t primeira = 2;  // primeira linha do corpo
+    if (!versao1) {
+        if (linhas.size() < 4) return std::nullopt;
+        Linha l(linhas[2]);
+        if (l.palavra() != "dificuldade") return std::nullopt;
+        dificuldade = static_cast<Dificuldade>(l.inteiro(0, TOTAL_DIFICULDADES - 1));
+        if (!l.ok() || !l.acabou()) return std::nullopt;
+        primeira = 3;
+    }
 
     // O andar refeito pela semente; o resto é sobrescrito pelo arquivo
-    Partida p(semente, numero);
+    Partida p(semente, numero, dificuldade);
     p.inimigos_.clear();
     p.chao_.clear();
     p.exploracao_ = mundo::Exploracao(p.andar_.grade.largura(), p.andar_.grade.altura());
@@ -159,7 +173,7 @@ std::optional<Partida> Salvamento::ler(std::string_view texto) {
     int equipados = 0;
     bool viuJogador = false, viuContadores = false;
 
-    for (size_t n = 2; n + 1 < linhas.size(); ++n) {
+    for (size_t n = primeira; n + 1 < linhas.size(); ++n) {
         Linha l(linhas[n]);
         const std::string_view tipo = l.palavra();
         if (tipo == "jogador") {
@@ -224,7 +238,7 @@ std::optional<Partida> Salvamento::ler(std::string_view texto) {
                         if (bits & (1 << b) && c * 4 + b < g.largura()) p.exploracao_.marcar(c * 4 + b, y);
                 }
         } else if (tipo == "inimigo") {
-            Inimigo i = criarInimigo(static_cast<TipoInimigo>(l.inteiro(0, TOTAL_TIPOS_INIMIGO - 1)), {0, 0}, numero);
+            Inimigo i = criarInimigo(static_cast<TipoInimigo>(l.inteiro(0, TOTAL_TIPOS_INIMIGO - 1)), {0, 0}, numero, dificuldade);
             i.posicao = {l.real(), l.real()};
             i.corpo.pes = l.real();
             i.vida = l.inteiro(-100000, 100000);

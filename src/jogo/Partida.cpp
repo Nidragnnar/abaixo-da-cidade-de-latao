@@ -26,18 +26,20 @@ const char* nomeMunicao(TipoMunicao t, int quantidade) {
 
 }
 
-Partida::Partida(uint32_t semente, int andarInicial) : Partida(mundo::gerarAndar(semente, andarInicial), semente) {
-    inimigos_ = gerarInimigos(andar_, semente_);
+Partida::Partida(uint32_t semente, int andarInicial, Dificuldade dificuldade)
+    : Partida(mundo::gerarAndar(semente, andarInicial), semente, dificuldade) {
+    inimigos_ = gerarInimigos(andar_, semente_, dificuldade_);
     chao_ = gerarChao(andar_, semente_);
 }
 
-Partida::Partida(mundo::Andar andar, uint32_t semente)
+Partida::Partida(mundo::Andar andar, uint32_t semente, Dificuldade dificuldade)
     : semente_(semente),
+      dificuldade_(dificuldade),
       andar_(std::move(andar)),
       jogador_{andar_.inicio, 0.0f},
       exploracao_(andar_.grade.largura(), andar_.grade.altura()),
       rng_(semente ^ 0xC0FFEEu),
-      inimigos_(inimigosDasMarcas(andar_)) {
+      inimigos_(inimigosDasMarcas(andar_, dificuldade_)) {
     jogador_.corpo.pes = mundo::alturaDoChao(andar_.grade, andar_.inicio);
 }
 
@@ -48,7 +50,8 @@ float Partida::aberturaComporta(int x, int y) const {
 }
 
 int Partida::pontuacao() const {
-    return calcularPontuacao(andar_.numero, destruidos_, engrenagens_, nivel_, chefesDerrotados_);
+    const int base = calcularPontuacao(andar_.numero, destruidos_, engrenagens_, nivel_, chefesDerrotados_);
+    return static_cast<int>(std::lround(base * multiplicadorPontos(dificuldade_)));
 }
 
 const Inimigo* Partida::chefe() const {
@@ -141,7 +144,7 @@ void Partida::tocar(Som s, std::optional<glm::vec2> origem) {
 }
 
 void Partida::acrescentarInimigo(TipoInimigo tipo, glm::vec2 posicao) {
-    inimigos_.push_back(criarInimigo(tipo, posicao, andar_.numero));
+    inimigos_.push_back(criarInimigo(tipo, posicao, andar_.numero, dificuldade_));
     inimigos_.back().corpo.pes = mundo::alturaDoChao(andar_.grade, posicao);
     desdeCampo_ = 1e9f;  // recalcula os campos (o voador precisa do seu) no próximo passo
 }
@@ -311,7 +314,7 @@ void Partida::descer() {
     abrindo_.clear();
     temChave_ = false;
     // Vida, armas, inventário e nível continuam; inimigos, tiros e chão são do andar
-    inimigos_ = gerarInimigos(andar_, semente_);
+    inimigos_ = gerarInimigos(andar_, semente_, dificuldade_);
     projeteis_.clear();
     explosoes_.clear();
     campoVoador_.clear();

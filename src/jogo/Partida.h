@@ -8,6 +8,7 @@
 
 #include "jogo/Armas.h"
 #include "jogo/Comandos.h"
+#include "jogo/Dificuldade.h"
 #include "jogo/Inimigos.h"
 #include "jogo/Inventario.h"
 #include "jogo/Itens.h"
@@ -47,9 +48,9 @@ class Partida {
     friend struct Salvamento;  // grava e remonta o estado (jogo/Salvamento.h)
 public:
     // Gera o andar e a população a partir da semente
-    Partida(uint32_t semente, int andarInicial = 1);
+    Partida(uint32_t semente, int andarInicial = 1, Dificuldade dificuldade = Dificuldade::Normal);
     // Para testes: inimigos vêm das marcas do texto; o próximo andar sai de gerarAndar(semente, numero + 1)
-    Partida(mundo::Andar andar, uint32_t semente);
+    Partida(mundo::Andar andar, uint32_t semente, Dificuldade dificuldade = Dificuldade::Normal);
 
     // Não faz nada depois da morte
     void atualizar(const Comandos& c, float dt);
@@ -75,6 +76,7 @@ public:
     std::string_view mensagem() const { return mensagem_; }
     int trocasDeAndar() const { return trocasDeAndar_; }
     uint32_t semente() const { return semente_; }
+    Dificuldade dificuldade() const { return dificuldade_; }
 
     int vida() const { return vida_; }
     int vidaMaxima() const { return atributos_.vidaMaxima; }
@@ -143,6 +145,7 @@ private:
     int indice(int x, int y) const { return y * andar_.grade.largura() + x; }
 
     uint32_t semente_;
+    Dificuldade dificuldade_;
     mundo::Andar andar_;
     Jogador jogador_;
     mundo::Exploracao exploracao_;

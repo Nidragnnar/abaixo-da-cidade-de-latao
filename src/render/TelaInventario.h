@@ -42,6 +42,7 @@ struct ElementosInventario {
 // a mensagem da partida ("Equipado: …", "Vida cheia") aparece acima do painel, já que o HUD fica escondido
 ElementosInventario construirInventario(const jogo::Inventario& inv, const LayoutInventario& l,
                                         std::optional<int> sobMouse, std::optional<int> arrastando, glm::vec2 mouse,
-                                        std::string_view mensagem = {});
+                                        std::string_view mensagem = {},
+                                        std::string_view titulo = "Inventário (I fecha)");
 
 }

@@ -120,3 +120,38 @@ TEST_CASE("corrompido informa se renomeou") {
 }
 
 TEST_CASE("pontuação ganha 500 por chefe") { CHECK(jogo::calcularPontuacao(3, 12, 40, 2, 2) == 300 + 120 + 40 + 100 + 1000); }
+
+TEST_CASE("placar grava e lê a dificuldade") {
+    PastaTemporaria pasta;
+    std::vector<jogo::RegistroPlacar> p{{900, 4, 2, 9, 5, 7u, "Morto", jogo::Dificuldade::Pesadelo},
+                                        {800, 3, 2, 9, 5, 7u, "Morto"}};
+    REQUIRE(jogo::gravarPlacar(pasta.caminho / "placar.txt", p));
+    auto lido = jogo::lerPlacar(pasta.caminho / "placar.txt");
+    REQUIRE(lido.registros.size() == 2);
+    CHECK(lido.registros[0].dificuldade == jogo::Dificuldade::Pesadelo);
+    CHECK(lido.registros[1].dificuldade == jogo::Dificuldade::Normal);
+    CHECK(lido.registros[0].causa == "Morto");
+}
+
+TEST_CASE("placar antigo vale Normal") {
+    PastaTemporaria pasta;
+    {
+        std::ofstream f(pasta.caminho / "placar.txt");
+        f << "500;2;1;3;10;7;Morto por Rato\n";
+    }
+    auto lido = jogo::lerPlacar(pasta.caminho / "placar.txt");
+    CHECK_FALSE(lido.estavaCorrompido);
+    REQUIRE(lido.registros.size() == 1);
+    CHECK(lido.registros[0].dificuldade == jogo::Dificuldade::Normal);
+    CHECK(lido.registros[0].causa == "Morto por Rato");
+    CHECK(lido.registros[0].semente == 7u);
+}
+
+TEST_CASE("placar com letra desconhecida é corrompido") {
+    PastaTemporaria pasta;
+    {
+        std::ofstream f(pasta.caminho / "placar.txt");
+        f << "500;2;1;3;10;7;X;Morto por Rato\n";
+    }
+    CHECK(jogo::lerPlacar(pasta.caminho / "placar.txt").estavaCorrompido);
+}

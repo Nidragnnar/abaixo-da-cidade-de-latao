@@ -19,11 +19,14 @@ bool lerNumero(std::string_view texto, T& valor) {
     return erro == std::errc() && fim == texto.data() + texto.size();
 }
 
-// pontuação;andar;nível;inimigos;engrenagens;semente;causa
+// pontuação;andar;nível;inimigos;engrenagens;semente;letra;causa
+// (formato antigo, sem a letra da dificuldade: 6 separadores, vale Normal; a causa nunca tem ';')
 std::optional<RegistroPlacar> lerLinha(std::string_view linha) {
     std::vector<std::string_view> campos;
+    const auto separadores = std::count(linha.begin(), linha.end(), ';');
+    const int numCampos = separadores == 7 ? 7 : 6;
     size_t inicio = 0;
-    for (int i = 0; i < 6; ++i) {
+    for (int i = 0; i < numCampos; ++i) {
         const size_t fim = linha.find(';', inicio);
         if (fim == std::string_view::npos) return std::nullopt;
         campos.push_back(linha.substr(inicio, fim - inicio));
@@ -33,6 +36,14 @@ std::optional<RegistroPlacar> lerLinha(std::string_view linha) {
     if (!lerNumero(campos[0], r.pontuacao) || !lerNumero(campos[1], r.andar) || !lerNumero(campos[2], r.nivel) ||
         !lerNumero(campos[3], r.inimigos) || !lerNumero(campos[4], r.engrenagens) || !lerNumero(campos[5], r.semente))
         return std::nullopt;
+    if (numCampos == 7) {
+        const auto letra = campos[6];
+        int achada = -1;
+        for (int d = 0; d < TOTAL_DIFICULDADES; ++d)
+            if (letra.size() == 1 && letra[0] == letraDa(static_cast<Dificuldade>(d))) achada = d;
+        if (achada < 0) return std::nullopt;
+        r.dificuldade = static_cast<Dificuldade>(achada);
+    }
     r.causa = std::string(linha.substr(inicio));
     return r;
 }
@@ -98,7 +109,7 @@ bool gravarPlacar(const std::filesystem::path& arquivo, const std::vector<Regist
     std::ostringstream texto;
     for (const RegistroPlacar& r : registros)
         texto << r.pontuacao << ';' << r.andar << ';' << r.nivel << ';' << r.inimigos << ';' << r.engrenagens << ';'
-              << r.semente << ';' << limpar(r.causa) << '\n';
+              << r.semente << ';' << letraDa(r.dificuldade) << ';' << limpar(r.causa) << '\n';
     return gravarAtomico(arquivo, texto.str());
 }
 

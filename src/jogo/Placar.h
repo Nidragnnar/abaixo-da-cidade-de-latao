@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#include "jogo/Dificuldade.h"
+
 namespace jogo {
 
 // 100 × andar + 10 × inimigos destruídos + engrenagens + 50 × nível (seção 7 da spec) + 500 por chefe (Etapa 7)
@@ -17,6 +19,7 @@ struct RegistroPlacar {
     int engrenagens;
     uint32_t semente;
     std::string causa;
+    Dificuldade dificuldade = Dificuldade::Normal;  // linhas antigas, sem a letra, são Normal
 };
 
 constexpr size_t TAMANHO_PLACAR = 10;

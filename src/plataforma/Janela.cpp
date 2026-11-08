@@ -17,6 +17,9 @@ Janela::Janela(const char* titulo, int largura, int altura) {
     SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0)
         throw std::runtime_error(std::format("Não foi possível iniciar a SDL: {}", SDL_GetError()));
+    // Controle de videogame: sem ele o jogo segue no teclado e mouse
+    if (SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) != 0)
+        logar(std::format("Controles de videogame indisponíveis: {}", SDL_GetError()));
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);

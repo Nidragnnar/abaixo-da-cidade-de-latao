@@ -9,7 +9,7 @@
 namespace ui {
 
 // Telas da seção 8 da spec: menu principal → jogo → pausa / inventário → fim de partida
-enum class Tela { Principal, Jogo, Pausa, Placar, Opcoes, Fim };
+enum class Tela { Principal, Jogo, Pausa, Placar, Opcoes, Fim, Teclas, Controle };
 
 // O que o laço principal precisa fazer depois da navegação
 enum class Acao {
@@ -25,6 +25,7 @@ struct EntradaMenu {
     std::optional<int> itemSobMouse;  // o mouse em cima seleciona
     bool clique = false, cliqueDireito = false;
     std::string texto;  // caracteres digitados (só dígitos contam, e só na semente)
+    std::optional<int> teclaFisica;  // primeira tecla ou botão do mouse que desceu (jogo::Atalhos; tela Teclas)
 };
 
 // Navegação das telas: seleção, confirmação, ajuste das opções e semente digitada (puro, sem SDL)
@@ -33,7 +34,7 @@ public:
     Tela tela() const { return tela_; }
     // Jogo, Fim e Principal vêm de fora (início da partida, morte)
     void abrir(Tela t);
-    // Jogo → Pausa; nas outras telas não faz nada
+    // Jogo → Pausa; na tela Teclas cancela a espera; nas outras não faz nada
     void focoPerdido();
     // Há partida salva: o menu principal ganha "Continuar partida" e "Novo jogo" pede confirmação
     void definirPartidaSalva(bool salva) { partidaSalva_ = salva; }
@@ -41,6 +42,8 @@ public:
     // Textos dos itens da tela atual
     std::vector<std::string> itens(const jogo::Config& c) const;
     int selecionado() const { return selecionado_; }
+    // Tela Teclas: esperando a nova tecla da ação selecionada (Esc cancela)
+    bool esperandoTecla() const { return esperandoTecla_; }
     // "Abaixo da Cidade de Latão", "Pausa", "Opções", "Placar" (vazio no jogo e no fim)
     std::string_view titulo() const;
     // Texto embaixo dos itens (partida salva que não abriu, salvamento que falhou); some ao trocar de tela
@@ -51,6 +54,7 @@ private:
     Acao confirmarItem(jogo::Config& c);
     Acao ajustarOpcao(int item, int delta, jogo::Config& c);
     Acao digitarSemente(const EntradaMenu& e, jogo::Config& c);
+    Acao esperarTecla(const EntradaMenu& e, jogo::Config& c);
     void irPara(Tela t, int selecionado = 0);
 
     Tela tela_ = Tela::Principal;
@@ -58,6 +62,7 @@ private:
     int selecionado_ = 0;
     bool confirmandoAbandono_ = false;
     bool confirmandoNovo_ = false;  // "Novo jogo" com partida salva: segundo Enter apaga e começa
+    bool esperandoTecla_ = false;
     bool partidaSalva_ = false;
     int base() const { return partidaSalva_ ? 1 : 0; }  // "Continuar partida" empurra os itens do principal
     std::string aviso_;

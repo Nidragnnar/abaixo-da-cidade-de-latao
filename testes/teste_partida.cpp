@@ -2,6 +2,8 @@
 
 #include <ostream>  // o doctest precisa para mostrar string_view
 #include <string>
+#include <algorithm>
+#include <cmath>
 
 #include <glm/geometric.hpp>
 
@@ -724,4 +726,26 @@ TEST_CASE("inimigo na abertura não é empurrado: ela tranca quando ele sai") {
     CHECK_FALSE(p.andar().grade.solida(4, 1));                    // ainda aberta: o rato está nela
     passos(p, 120);  // o rato entra atrás do jogador
     CHECK(p.andar().grade.em(4, 1) == mundo::Celula::ComportaTrancada);
+}
+
+TEST_CASE("partida guarda a dificuldade e multiplica a pontuação") {
+    jogo::Partida n(5, 2), d(5, 2, jogo::Dificuldade::Dificil);
+    CHECK(n.dificuldade() == jogo::Dificuldade::Normal);
+    CHECK(d.dificuldade() == jogo::Dificuldade::Dificil);
+    REQUIRE(d.inimigos().size() == n.inimigos().size());
+    CHECK(d.inimigos()[0].vidaMaxima > n.inimigos()[0].vidaMaxima);
+    // mesma partida, mesmos números: pontuação × 1,5
+    n.ganharXp(30);
+    d.ganharXp(30);
+    CHECK(d.pontuacao() == static_cast<int>(std::lround(n.pontuacao() * 1.5)));
+}
+
+TEST_CASE("descer mantém a dificuldade") {
+    jogo::Partida p(mundo::andarDeTexto({"####", "#@E#", "####"}, 1), 99, jogo::Dificuldade::Pesadelo);
+    passos(p, 1, apertarE());
+    REQUIRE(p.andar().numero == 2);
+    const jogo::Partida normal(99, 2);
+    REQUIRE(p.inimigos().size() == normal.inimigos().size());
+    CHECK(p.inimigos()[0].vidaMaxima == std::max(1, static_cast<int>(std::lround(normal.inimigos()[0].vidaMaxima * 1.8))));
+    CHECK(p.dificuldade() == jogo::Dificuldade::Pesadelo);
 }

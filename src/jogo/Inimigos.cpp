@@ -71,14 +71,20 @@ int escalar(int valor, int andar) {
     return std::max(1, static_cast<int>(std::lround(valor * (1.0 + 0.15 * (andar - 1)))));
 }
 
-Inimigo criarInimigo(TipoInimigo t, glm::vec2 posicao, int andar) {
+Inimigo criarInimigo(TipoInimigo t, glm::vec2 posicao, int andar, Dificuldade dificuldade) {
     const DadosInimigo& d = dados(t);
-    if (d.chefe) return Inimigo{t, posicao, d.vida, d.vida, d.danoMin, d.danoMax};  // valores finais, sem escala
-    const int vida = escalar(d.vida, andar);
-    return Inimigo{t, posicao, vida, vida, escalar(d.danoMin, andar), escalar(d.danoMax, andar)};
+    // Chefes: valores finais da tabela, sem escala por andar; a dificuldade vale para todos
+    const auto final = [&](int valor) {
+        const int base = d.chefe ? valor : escalar(valor, andar);
+        return std::max(1, static_cast<int>(std::lround(base * multiplicadorInimigos(dificuldade))));
+    };
+    const int vida = final(d.vida);
+    Inimigo i{t, posicao, vida, vida, final(d.danoMin), final(d.danoMax)};
+    i.multiplicador = multiplicadorInimigos(dificuldade);
+    return i;
 }
 
-std::vector<Inimigo> gerarInimigos(const mundo::Andar& andar, uint32_t semente) {
+std::vector<Inimigo> gerarInimigos(const mundo::Andar& andar, uint32_t semente, Dificuldade d) {
     std::vector<Inimigo> v;
     if (andar.salas.size() < 2) return v;
     std::mt19937 rng(mundo::sementeDoAndar(semente, andar.numero) ^ 0x51EDu);
@@ -113,18 +119,18 @@ std::vector<Inimigo> gerarInimigos(const mundo::Andar& andar, uint32_t semente) 
         if (andar.arena && indiceSala == static_cast<int>(*andar.arena)) break;
         const mundo::Sala& sala = andar.salas[indiceSala];
         for (int i = 0; i < quantos; ++i, ++sorteados)
-            if (auto p = posicaoLivre(sala)) v.push_back(criarInimigo(tipo, *p, andar.numero));
+            if (auto p = posicaoLivre(sala)) v.push_back(criarInimigo(tipo, *p, andar.numero, d));
     }
     // O chefe espera no centro da arena
-    if (andar.arena) v.push_back(criarInimigo(chefeDoAndar(andar.numero), glm::vec2(andar.salas[*andar.arena].centro()) + 0.5f, andar.numero));
+    if (andar.arena) v.push_back(criarInimigo(chefeDoAndar(andar.numero), glm::vec2(andar.salas[*andar.arena].centro()) + 0.5f, andar.numero, d));
     for (Inimigo& i : v) i.corpo.pes = mundo::alturaDoChao(andar.grade, i.posicao);  // nascem no chão da célula
     return v;
 }
 
-std::vector<Inimigo> inimigosDasMarcas(const mundo::Andar& andar) {
+std::vector<Inimigo> inimigosDasMarcas(const mundo::Andar& andar, Dificuldade d) {
     std::vector<Inimigo> v;
     for (const auto& [letra, posicao] : andar.marcas) {
-        v.push_back(criarInimigo(tipoDaMarca(letra), posicao, andar.numero));
+        v.push_back(criarInimigo(tipoDaMarca(letra), posicao, andar.numero, d));
         v.back().corpo.pes = mundo::alturaDoChao(andar.grade, posicao);
     }
     return v;

@@ -1,5 +1,6 @@
 #include <doctest/doctest.h>
 
+#include <algorithm>
 #include <ostream>  // o doctest precisa para mostrar string
 
 #include "ui/Menus.h"
@@ -123,7 +124,8 @@ TEST_CASE("opções ajustam dentro dos limites e voltam para quem abriu") {
     CHECK(m.titulo() == "Opções");
     CHECK(m.itens(c) == std::vector<std::string>{"Sensibilidade do mouse: 5", "Volume dos efeitos: 8",
                                                  "Volume da música: 5", "Tela cheia: não", "Semente fixa: aleatória",
-                                                 "Voltar"});
+                                                 "Dificuldade: Normal (próx. partida)", "Sensibilidade do controle: 5",
+                                                 "Inverter eixo vertical: não", "Teclas...", "Controle...", "Voltar"});
     for (int i = 0; i < 6; ++i) CHECK(m.atualizar(ajustar(1), c) == (i < 5 ? ui::Acao::OpcoesMudaram : ui::Acao::Nenhuma));
     CHECK(c.sensibilidade == 10);
     m.atualizar(mover(1), c);
@@ -185,7 +187,7 @@ TEST_CASE("mouse em cima seleciona e clique confirma") {
     e.clique = true;
     CHECK(m.atualizar(e, c) == ui::Acao::Nenhuma);
     CHECK(m.tela() == ui::Tela::Opcoes);
-    e.itemSobMouse = 9;  // fora da lista: ignora
+    e.itemSobMouse = 99;  // fora da lista: ignora
     e.clique = false;
     m.atualizar(e, c);
     CHECK(m.selecionado() == 0);
@@ -314,4 +316,184 @@ TEST_CASE("aviso do menu some ao trocar de tela") {
     CHECK(m.aviso().empty());
     m.atualizar(voltar(), c);  // pausa de novo
     CHECK(m.aviso().empty());
+}
+
+TEST_CASE("opções: dificuldade muda com as setas e para nas pontas") {
+    ui::Menus m;
+    jogo::Config c;
+    m.abrir(ui::Tela::Opcoes);
+    m.atualizar(mover(5), c);
+    CHECK(m.itens(c)[5] == "Dificuldade: Normal");
+    CHECK(m.atualizar(ajustar(1), c) == ui::Acao::OpcoesMudaram);
+    CHECK(m.itens(c)[5] == "Dificuldade: Difícil");
+    m.atualizar(ajustar(1), c);
+    CHECK(m.itens(c)[5] == "Dificuldade: Pesadelo");
+    CHECK(m.atualizar(ajustar(1), c) == ui::Acao::Nenhuma);
+    for (int i = 0; i < 3; ++i) m.atualizar(ajustar(-1), c);
+    CHECK(c.dificuldade == jogo::Dificuldade::Facil);
+    CHECK(m.itens(c)[5] == "Dificuldade: Fácil");
+}
+
+TEST_CASE("opções do controle") {
+    ui::Menus m;
+    jogo::Config c;
+    m.abrir(ui::Tela::Opcoes);
+    m.atualizar(mover(6), c);
+    CHECK(m.itens(c)[6] == "Sensibilidade do controle: 5");
+    for (int i = 0; i < 6; ++i) m.atualizar(ajustar(1), c);
+    CHECK(c.sensibilidadeControle == 10);
+    for (int i = 0; i < 12; ++i) m.atualizar(ajustar(-1), c);
+    CHECK(c.sensibilidadeControle == 1);
+    m.atualizar(mover(1), c);
+    CHECK(m.itens(c)[7] == "Inverter eixo vertical: não");
+    CHECK(m.atualizar(confirmar(), c) == ui::Acao::OpcoesMudaram);
+    CHECK(c.inverterVertical);
+    CHECK(m.itens(c)[7] == "Inverter eixo vertical: sim");
+    CHECK(m.itens(c)[8] == "Teclas...");
+    CHECK(m.itens(c)[9] == "Controle...");
+    CHECK(m.itens(c)[10] == "Voltar");
+}
+
+TEST_CASE("opções na pausa avisam que vale na próxima partida") {
+    ui::Menus m;
+    jogo::Config c;
+    m.abrir(ui::Tela::Opcoes);
+    CHECK(m.itens(c)[5] == "Dificuldade: Normal");
+    m.abrir(ui::Tela::Pausa);
+    m.atualizar(mover(2), c);
+    m.atualizar(confirmar(), c);
+    REQUIRE(m.tela() == ui::Tela::Opcoes);
+    CHECK(m.itens(c)[5] == "Dificuldade: Normal (próx. partida)");
+}
+
+namespace {
+// Opções → "Teclas..."
+void abrirTeclas(ui::Menus& m, jogo::Config& c) {
+    m.abrir(ui::Tela::Opcoes);
+    m.atualizar(mover(8), c);
+    m.atualizar(confirmar(), c);
+}
+ui::EntradaMenu tecla(int t) {
+    ui::EntradaMenu e;
+    e.teclaFisica = t;
+    return e;
+}
+}
+
+TEST_CASE("Teclas... abre a tela das teclas") {
+    ui::Menus m;
+    jogo::Config c;
+    abrirTeclas(m, c);
+    REQUIRE(m.tela() == ui::Tela::Teclas);
+    CHECK(m.titulo() == "Teclas");
+    const auto itens = m.itens(c);
+    REQUIRE(itens.size() == 17);
+    CHECK(itens[0] == "Andar para frente: W");
+    CHECK(itens[4] == "Pular: Espaço");
+    CHECK(itens[14] == "Atacar: Botão esquerdo");
+    CHECK(itens[15] == "Restaurar padrão");
+    CHECK(itens[16] == "Voltar");
+    CHECK(m.atualizar(voltar(), c) == ui::Acao::SalvarOpcoes);
+    CHECK(m.tela() == ui::Tela::Opcoes);
+    CHECK(m.selecionado() == 8);
+}
+
+TEST_CASE("trocar uma tecla e cancelar") {
+    ui::Menus m;
+    jogo::Config c;
+    abrirTeclas(m, c);
+    m.atualizar(mover(4), c);  // Pular
+    CHECK(m.atualizar(confirmar(), c) == ui::Acao::Nenhuma);
+    CHECK(m.esperandoTecla());
+    CHECK(m.itens(c)[4] == "Pular: ...");
+    CHECK(m.aviso() == "Aperte a tecla ou o botão (Esc cancela)");
+    m.atualizar(mover(1), c);  // esperando: a navegação não conta
+    CHECK(m.atualizar(tecla(8 /* E */), c) == ui::Acao::OpcoesMudaram);
+    CHECK_FALSE(m.esperandoTecla());
+    CHECK(m.aviso().empty());
+    CHECK(c.teclas.de(jogo::AcaoJogo::Pular) == 8);
+    CHECK(c.teclas.de(jogo::AcaoJogo::Usar) == 44);
+    CHECK(m.selecionado() == 4);
+    m.atualizar(confirmar(), c);
+    REQUIRE(m.esperandoTecla());
+    ui::EntradaMenu esc = voltar();
+    esc.teclaFisica = 41;
+    CHECK(m.atualizar(esc, c) == ui::Acao::Nenhuma);
+    CHECK_FALSE(m.esperandoTecla());
+    CHECK(m.tela() == ui::Tela::Teclas);
+    CHECK(c.teclas.de(jogo::AcaoJogo::Pular) == 8);
+}
+
+TEST_CASE("abrir a espera não captura a própria tecla") {
+    ui::Menus m;
+    jogo::Config c;
+    abrirTeclas(m, c);
+    ui::EntradaMenu e;
+    e.itemSobMouse = 4;
+    e.clique = true;
+    e.teclaFisica = jogo::BOTAO_MOUSE + 1;
+    m.atualizar(e, c);
+    CHECK(m.esperandoTecla());
+    CHECK(c.teclas.de(jogo::AcaoJogo::Pular) == 44);
+    // o Enter que abriu também não
+    ui::Menus m2;
+    jogo::Config c2;
+    abrirTeclas(m2, c2);
+    ui::EntradaMenu enter = confirmar();
+    enter.teclaFisica = 40;
+    m2.atualizar(enter, c2);
+    CHECK(m2.esperandoTecla());
+    CHECK(c2.teclas.de(jogo::AcaoJogo::Frente) == 26);
+}
+
+TEST_CASE("tecla não aceita avisa e continua esperando") {
+    ui::Menus m;
+    jogo::Config c;
+    abrirTeclas(m, c);
+    m.atualizar(confirmar(), c);
+    CHECK(m.atualizar(tecla(0), c) == ui::Acao::Nenhuma);
+    CHECK(m.esperandoTecla());
+    CHECK(m.aviso() == "Essa tecla não pode ser usada");
+    CHECK(c.teclas.de(jogo::AcaoJogo::Frente) == 26);
+}
+
+TEST_CASE("perder o foco cancela a espera") {
+    ui::Menus m;
+    jogo::Config c;
+    abrirTeclas(m, c);
+    m.atualizar(confirmar(), c);
+    m.focoPerdido();
+    CHECK_FALSE(m.esperandoTecla());
+    CHECK(m.tela() == ui::Tela::Teclas);
+}
+
+TEST_CASE("restaurar padrão") {
+    ui::Menus m;
+    jogo::Config c;
+    abrirTeclas(m, c);
+    m.atualizar(confirmar(), c);
+    m.atualizar(tecla(9), c);
+    REQUIRE(c.teclas.de(jogo::AcaoJogo::Frente) == 9);
+    m.atualizar(mover(15), c);
+    CHECK(m.atualizar(confirmar(), c) == ui::Acao::OpcoesMudaram);
+    CHECK(c.teclas.tecla == jogo::Atalhos::padrao().tecla);
+}
+
+TEST_CASE("Controle... mostra o esquema e volta") {
+    ui::Menus m;
+    jogo::Config c;
+    m.abrir(ui::Tela::Opcoes);
+    m.atualizar(mover(9), c);
+    m.atualizar(confirmar(), c);
+    REQUIRE(m.tela() == ui::Tela::Controle);
+    CHECK(m.titulo() == "Controle");
+    const auto itens = m.itens(c);
+    CHECK(std::find(itens.begin(), itens.end(), "RT (PS: R2): atacar") != itens.end());
+    CHECK(itens.back() == "Voltar");
+    m.atualizar(mover(1), c);  // só leitura: navegar e confirmar numa linha não muda nada
+    CHECK(m.atualizar(confirmar(), c) == ui::Acao::Nenhuma);
+    CHECK(m.tela() == ui::Tela::Controle);
+    CHECK(m.atualizar(voltar(), c) == ui::Acao::Nenhuma);
+    CHECK(m.tela() == ui::Tela::Opcoes);
+    CHECK(m.selecionado() == 9);
 }

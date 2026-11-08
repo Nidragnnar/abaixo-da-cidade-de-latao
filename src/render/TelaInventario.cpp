@@ -99,12 +99,12 @@ std::string descricaoItem(const jogo::Item& i) {
 
 ElementosInventario construirInventario(const jogo::Inventario& inv, const LayoutInventario& l,
                                         std::optional<int> sobMouse, std::optional<int> arrastando, glm::vec2 mouse,
-                                        std::string_view mensagem) {
+                                        std::string_view mensagem, std::string_view titulo) {
     ElementosInventario e;
     const auto p = [](const Retangulo& r) { return glm::vec2(r.x, r.y); };
     const auto fim = [](const Retangulo& r) { return glm::vec2(r.x + r.largura, r.y + r.altura); };
     adicionarRetangulo(e.cores, p(l.painel), fim(l.painel), COR_PAINEL);
-    texto(e.texto, "Inventário (I fecha)", p(l.painel) + glm::vec2(12, 8), COR_LATAO);
+    texto(e.texto, titulo, p(l.painel) + glm::vec2(12, 8), COR_LATAO);  // com a tecla atual do inventário
 
     // Espaço: borda na cor da qualidade, fundo, ícone e quantidade
     auto desenharEspaco = [&](const Retangulo& r, const jogo::Item* item, bool destacado, bool escondeIcone) {

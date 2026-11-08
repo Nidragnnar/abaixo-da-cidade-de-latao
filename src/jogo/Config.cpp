@@ -1,5 +1,6 @@
 #include "jogo/Config.h"
 
+#include <array>
 #include <charconv>
 #include <cmath>
 #include <fstream>
@@ -27,7 +28,7 @@ bool lerFaixa(std::string_view texto, int minimo, int maximo, int& valor) {
 }
 
 // Aplica uma linha "chave=valor"; falso se a linha estraga o arquivo
-bool aplicarLinha(std::string_view linha, Config& c) {
+bool aplicarLinha(std::string_view linha, Config& c, std::array<bool, TOTAL_ACOES>& fixas) {
     const size_t igual = linha.find('=');
     if (igual == std::string_view::npos) return false;
     // Quem edita à mão costuma pôr espaços: "sensibilidade = 7"
@@ -45,6 +46,19 @@ bool aplicarLinha(std::string_view linha, Config& c) {
         c.telaCheia = valor == "sim";
         return true;
     }
+    if (chave == "dificuldade") {
+        const auto d = dificuldadeDoId(valor);
+        if (!d) return false;
+        c.dificuldade = *d;
+        return true;
+    }
+    if (chave == "sensibilidade_controle")
+        return lerFaixa(valor, SENSIBILIDADE_MIN, SENSIBILIDADE_MAX, c.sensibilidadeControle);
+    if (chave == "inverter_vertical") {
+        if (valor != "0" && valor != "1") return false;
+        c.inverterVertical = valor == "1";
+        return true;
+    }
     if (chave == "semente") {
         if (valor.empty()) {
             c.semente.reset();
@@ -53,6 +67,16 @@ bool aplicarLinha(std::string_view linha, Config& c) {
         uint32_t s = 0;
         if (!lerNumero(valor, s)) return false;
         c.semente = s;
+        return true;
+    }
+    // tecla_<ação>: valor inválido ou não aceito deixa o padrão só daquela ação (não estraga o arquivo)
+    if (chave.starts_with("tecla_")) {
+        const auto acao = acaoDoId(chave.substr(6));
+        const auto tecla = teclaDoId(valor);
+        if (acao && tecla && teclaAceita(*tecla)) {
+            c.teclas.tecla[static_cast<size_t>(*acao)] = *tecla;
+            fixas[static_cast<size_t>(*acao)] = true;
+        }
         return true;
     }
     return true;  // chave desconhecida: ignorada
@@ -72,17 +96,19 @@ LeituraConfig lerConfig(const std::filesystem::path& arquivo) {
         }
         std::string linha;
         bool primeira = true;
+        std::array<bool, TOTAL_ACOES> fixas{};  // ações com tecla vinda do arquivo (têm preferência nas repetidas)
         while (std::getline(f, linha)) {
             // Arquivo salvo pelo Bloco de Notas pode começar com o BOM do UTF-8
             if (primeira && linha.starts_with("\xEF\xBB\xBF")) linha.erase(0, 3);
             primeira = false;
             if (!linha.empty() && linha.back() == '\r') linha.pop_back();
             if (linha.empty() || linha.front() == '#') continue;
-            if (!aplicarLinha(linha, leitura.config)) {
+            if (!aplicarLinha(linha, leitura.config, fixas)) {
                 leitura.estavaCorrompido = true;
                 break;
             }
         }
+        leitura.config.teclas.corrigirRepetidas(fixas);
     }
     if (leitura.estavaCorrompido) {
         leitura.config = Config{};
@@ -98,6 +124,13 @@ bool gravarConfig(const std::filesystem::path& arquivo, const Config& c) {
     texto += "volume_musica=" + std::to_string(c.volumeMusica) + "\n";
     texto += std::string("tela_cheia=") + (c.telaCheia ? "sim" : "nao") + "\n";
     texto += "semente=" + (c.semente ? std::to_string(*c.semente) : std::string()) + "\n";
+    texto += "dificuldade=" + std::string(idDa(c.dificuldade)) + "\n";
+    texto += "sensibilidade_controle=" + std::to_string(c.sensibilidadeControle) + "\n";
+    texto += std::string("inverter_vertical=") + (c.inverterVertical ? "1" : "0") + "\n";
+    for (int i = 0; i < TOTAL_ACOES; ++i) {
+        const auto acao = static_cast<AcaoJogo>(i);
+        texto += "tecla_" + std::string(idDaAcao(acao)) + "=" + std::string(idDaTecla(c.teclas.de(acao))) + "\n";
+    }
     return gravarAtomico(arquivo, texto);
 }
 

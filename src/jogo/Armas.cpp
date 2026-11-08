@@ -197,7 +197,7 @@ ResultadoAtaque atualizarArmas(Armas& a, Inventario& inv, const Atributos& atr, 
     const bool semRecarga = dFogo.carga == 0;
     if ((semRecarga && reserva == 0) || (!semRecarga && fogo.carga == 0)) {
         if (semRecarga) r.mensagem = "Sem células elétricas";
-        else r.mensagem = reserva > 0 ? "Sem munição — R para recarregar" : "Sem munição";
+        else r.mensagem = reserva > 0 ? "Sem munição — {recarregar} para recarregar" : "Sem munição";
         r.vazia = true;
         a.intervalo = intervalo;  // não repete o aviso a cada passo
         return r;

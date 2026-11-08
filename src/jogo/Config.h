@@ -3,6 +3,9 @@
 #include <filesystem>
 #include <optional>
 
+#include "jogo/Atalhos.h"
+#include "jogo/Dificuldade.h"
+
 namespace jogo {
 
 // Opções do jogador (seção 8 da spec), em config.txt na pasta de dados
@@ -12,6 +15,10 @@ struct Config {
     int volumeMusica = 5;             // 0–10
     bool telaCheia = false;
     std::optional<uint32_t> semente;  // vazio = aleatória
+    Dificuldade dificuldade = Dificuldade::Normal;  // vale no próximo Novo jogo
+    int sensibilidadeControle = 5;    // 1–10, mira pelo analógico direito
+    bool inverterVertical = false;    // analógico direito para cima olha para baixo
+    Atalhos teclas = Atalhos::padrao();  // tecla_<ação>; inválida ou repetida volta ao padrão só daquela ação
 };
 
 constexpr int SENSIBILIDADE_MIN = 1, SENSIBILIDADE_MAX = 10, VOLUME_MAX = 10;

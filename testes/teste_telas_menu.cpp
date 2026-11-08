@@ -6,6 +6,7 @@
 #include "render/Letterbox.h"
 #include "render/TelasMenu.h"
 #include "render/Texto.h"
+#include "ui/Menus.h"
 
 namespace {
 glm::vec2 centro(render::Retangulo r) { return {r.x + r.largura / 2.0f, r.y + r.altura / 2.0f}; }
@@ -99,9 +100,8 @@ TEST_CASE("placar vazio avisa") {
 }
 
 TEST_CASE("placar: corte da causa não come o acento antes do ponto de corte") {
-    // "ã" seguido de letras: o corte tira caracteres inteiros, um por vez, e nunca deixa UTF-8 partido
-    // "1. 1  andar 1  nível 1  " tem 24 caracteres; cabem 56 (448 px), então sobram 29 da causa antes do "..."
-    std::vector<jogo::RegistroPlacar> r{{1, 1, 1, 0, 0, 1u, std::string(28, 'x') + "ãaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}};
+    // "1. 1 N  andar 1  nível 1  " tem 26 caracteres; cabem 56 (448 px), então sobram 27 da causa antes do "..."
+    std::vector<jogo::RegistroPlacar> r{{1, 1, 1, 0, 0, 1u, std::string(26, 'x') + "ãaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}};
     const auto e = render::construirPlacar(r, 480, 270);
     CHECK(contemTexto(e.texto, "..."));
     CHECK(contemTexto(e.texto, "xã..."));  // o "ã" fica; sai só o que vem depois dele
@@ -123,4 +123,55 @@ TEST_CASE("menu mostra o aviso embaixo dos itens") {
     CHECK(contemTexto(e.texto, "Partida salva não pôde ser lida"));
     const auto& a = e.cores[e.cores.size() - 6];  // o destaque continua sendo o último retângulo
     CHECK(a.posicao.y == doctest::Approx(render::layoutMenu(4, 480, 270)[0].y));
+}
+
+TEST_CASE("tela do placar mostra a letra") {
+    const auto e = render::construirPlacar({{1234, 5, 3, 7, 10, 1u, "Morto", jogo::Dificuldade::Dificil}}, 480, 270);
+    CHECK(contemTexto(e.texto, "1. 1234 D  andar 5"));
+}
+
+TEST_CASE("listas longas cabem na tela") {
+    for (int n : {11, 18}) {
+        INFO("itens: " << n);
+        const auto r = render::layoutMenu(n, 480, 270);
+        REQUIRE(r.size() == static_cast<size_t>(n));
+        CHECK(r.front().y > 48 + 16);  // abaixo do título
+        CHECK(r.back().y + r.back().altura <= 270 - 4);
+        for (size_t i = 1; i < r.size(); ++i) CHECK(r[i].y >= r[i - 1].y + r[i - 1].altura);
+        // o aviso ainda cabe embaixo
+        render::VistaMenu v{"Opções", std::vector<std::string>(static_cast<size_t>(n), "x"), 0, "Esc cancela"};
+        for (const auto& p : render::construirMenu(v, 480, 270).texto) CHECK(p.posicao.y <= 270);
+    }
+    // até 10 itens, a posição é a de hoje
+    const auto dez = render::layoutMenu(10, 480, 270);
+    CHECK(dez[0].y == 96 - 2);
+    CHECK(dez[9].y == 96 + 9 * 14 - 2);
+}
+
+TEST_CASE("opções da pausa cabem no painel") {
+    ui::Menus m;
+    jogo::Config c;
+    c.dificuldade = jogo::Dificuldade::Pesadelo;
+    c.semente = 4294967295u;
+    c.sensibilidadeControle = 10;
+    m.abrir(ui::Tela::Pausa);
+    m.atualizar(ui::EntradaMenu{.mover = 2}, c);
+    m.atualizar(ui::EntradaMenu{.confirmar = true}, c);
+    REQUIRE(m.tela() == ui::Tela::Opcoes);
+    for (const auto& t : m.itens(c)) CHECK(render::larguraTexto(t, 1) <= 264 + 40);
+}
+
+TEST_CASE("tela Teclas cabe no painel, esperando ou não") {
+    ui::Menus m;
+    jogo::Config c;
+    c.teclas.definir(jogo::AcaoJogo::Frente, 81);  // "Seta para baixo", um dos nomes mais longos
+    m.abrir(ui::Tela::Opcoes);
+    m.atualizar(ui::EntradaMenu{.mover = 8}, c);
+    m.atualizar(ui::EntradaMenu{.confirmar = true}, c);
+    REQUIRE(m.tela() == ui::Tela::Teclas);
+    for (const auto& t : m.itens(c)) CHECK(render::larguraTexto(t, 1) <= 264 + 40);
+    m.atualizar(ui::EntradaMenu{.confirmar = true}, c);
+    REQUIRE(m.esperandoTecla());
+    for (const auto& t : m.itens(c)) CHECK(render::larguraTexto(t, 1) <= 264 + 40);
+    CHECK(render::larguraTexto(m.aviso(), 1) <= 480 - 16);
 }

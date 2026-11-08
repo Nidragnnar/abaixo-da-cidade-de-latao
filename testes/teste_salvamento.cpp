@@ -355,3 +355,35 @@ TEST_CASE("dá para saber se a partida pode ser salva agora") {
     passos(p, 1);  // contando a vitória
     CHECK_FALSE(jogo::podeGravarAgora(p));
 }
+
+TEST_CASE("salvamento guarda a dificuldade") {
+    jogo::Partida p(3, 2, jogo::Dificuldade::Dificil);
+    const std::string texto = *jogo::escreverPartida(p);
+    CHECK(texto.starts_with("versao 2\npartida 3 2\ndificuldade 2\n"));
+    const auto lida = jogo::lerPartida(texto);
+    REQUIRE(lida);
+    CHECK(lida->dificuldade() == jogo::Dificuldade::Dificil);
+    conferirIgual(p, *lida);
+}
+
+TEST_CASE("salvamento da v1.4 é lido como Normal") {
+    jogo::Partida p(3, 2);
+    std::string texto = *jogo::escreverPartida(p);
+    texto.replace(0, 9, "versao 1\n");
+    texto.erase(texto.find("dificuldade 1\n"), 14);
+    const auto lida = jogo::lerPartida(texto);
+    REQUIRE(lida);
+    CHECK(lida->dificuldade() == jogo::Dificuldade::Normal);
+    conferirIgual(p, *lida);
+}
+
+TEST_CASE("versao 2 sem dificuldade ou fora da faixa é estragado") {
+    jogo::Partida p(3, 2, jogo::Dificuldade::Facil);
+    const std::string bom = *jogo::escreverPartida(p);
+    std::string sem = bom;
+    sem.erase(sem.find("dificuldade 0\n"), 14);
+    CHECK_FALSE(jogo::lerPartida(sem));
+    std::string fora = bom;
+    fora.replace(fora.find("dificuldade 0"), 13, "dificuldade 4");
+    CHECK_FALSE(jogo::lerPartida(fora));
+}

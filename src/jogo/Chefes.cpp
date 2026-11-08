@@ -129,7 +129,10 @@ void atualizarCapataz(Inimigo& i, const MundoIA& m, EventosIA& e, bool ve, float
                 i.recarga = 0;
                 mudar(i, EstadoInimigo::Perseguindo);
             } else if (i.ataque == 2 && i.tempoNoEstado >= PANCADA_PREPARO) {
-                e.ondas.push_back({i.posicao, PANCADA_ALCANCE, mundo::sortear(m.rng, PANCADA_DANO_MIN, PANCADA_DANO_MAX), i.tipo});
+                // O dano da pancada não vem da tabela: a dificuldade entra aqui
+                const int bruto = mundo::sortear(m.rng, PANCADA_DANO_MIN, PANCADA_DANO_MAX);
+                const int dano = std::max(1, static_cast<int>(std::lround(bruto * i.multiplicador)));
+                e.ondas.push_back({i.posicao, PANCADA_ALCANCE, dano, i.tipo});
                 i.recarga2 = 0;
                 mudar(i, EstadoInimigo::Perseguindo);
             }

@@ -25,6 +25,23 @@ I ................. inventário (clique: usar/equipar; direito: largar; arrastar
 1 2 3 4 ........... usar os itens da primeira linha do inventário
 Tab ............... mapa
 Esc ............... pausa (continuar, salvar e sair, opções, abandonar a partida)
+As teclas acima são as de fábrica: em Opções > Teclas... dá para trocar cada ação por
+outra tecla ou botão do mouse (Esc e a roda ficam fixos; "Restaurar padrão" desfaz).
+
+CONTROLE DE VIDEOGAME (Xbox, PlayStation e outros que o Windows reconhece)
+Analógico esquerdo ... andar (nos menus e no inventário: mover)
+Analógico direito .... olhar e mirar
+RT (PS: R2) .......... atacar / atirar
+A (PS: X) ............ pular (nos menus: confirmar; no inventário: o clique)
+X (PS: Quadrado) ..... usar (no inventário: largar no chão, como o clique direito)
+B (PS: Círculo) ...... recarregar (nos menus: voltar)
+Y (PS: Triângulo) .... trocar de arma
+Cruz ................. itens rápidos: cima 1, direita 2, baixo 3, esquerda 4
+View (PS: Share) ..... inventário
+LB (PS: L1) .......... mapa
+Start (PS: Options) .. pausa
+Pode ligar ou desligar o controle com o jogo aberto. Em Opções dá para mudar a
+sensibilidade do controle e inverter o eixo vertical; "Controle..." mostra este esquema.
 
 DICAS
 - A munição é pouca: use a chave inglesa nos inimigos fracos.
@@ -48,6 +65,9 @@ DICAS
 
 OPÇÕES, PLACAR E PROBLEMAS
 - Sensibilidade do mouse, volumes e tela cheia ficam no menu Opções.
+- Dificuldade (Opções): Fácil, Normal, Difícil ou Pesadelo muda a vida e o dano dos
+  inimigos e vale a partir do próximo Novo jogo. A pontuação vale metade no Fácil,
+  1,5 vez no Difícil e o dobro no Pesadelo; o placar mostra a letra (F, N, D, P).
 - O placar e as opções ficam em %APPDATA%\Roguelike (cole isso na barra do Explorador).
 - Se o jogo avisar que a placa de vídeo não é suportada, atualize o driver de vídeo.
 - Se algo der errado, o arquivo log.txt, ao lado do jogo, ajuda a descobrir o motivo.

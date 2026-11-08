@@ -30,6 +30,27 @@ O guia completo, com controles e dicas, vai junto no zip: `COMO_JOGAR.txt`.
 | Tab | mapa |
 | Esc | pausa, opções e salvar e sair |
 
+As teclas acima são as de fábrica; em **Opções > Teclas...** cada ação pode ir para outra tecla ou botão do mouse.
+
+Também dá para jogar com controle de videogame (Xbox, PlayStation e outros que o Windows reconhece), menus e
+inventário inclusive:
+
+| Controle (Xbox / PlayStation) | No jogo | Nos menus |
+|---|---|---|
+| Analógico esquerdo | andar | mover a seleção (no inventário, o cursor) |
+| Analógico direito | olhar e mirar | — |
+| RT / R2 | atacar / atirar | — |
+| A / ✕ | pular | confirmar (no inventário, o clique: usar/equipar ou arrastar) |
+| X / □ | usar | no inventário, largar no chão (o clique direito) |
+| B / ○ | recarregar | voltar |
+| Y / △ | trocar de arma | — |
+| Cruz | itens rápidos 1 (cima), 2 (direita), 3 (baixo), 4 (esquerda) | mover e ajustar |
+| View / Share | inventário | — |
+| LB / L1 | mapa | — |
+| Start / Options | pausa | voltar ao jogo (na pausa) |
+
+Sensibilidade do controle e "inverter eixo vertical" ficam nas Opções.
+
 ## O que tem no jogo
 
 - Masmorra procedural por semente, com 3 zonas (esgoto, fábrica, minas), desníveis (escadas, rampas, plataformas,
@@ -40,7 +61,8 @@ O guia completo, com controles e dicas, vai junto no zip: `COMO_JOGAR.txt`.
   fogo (revólver, bacamarte, pistola Tesla), munição escassa por tipo.
 - Itens com qualidade (comum, modificada, obra-prima) e bônus, armaduras, tônicos, inventário com mouse,
   XP e níveis.
-- Menu, pausa, opções (sensibilidade, volumes, tela cheia, semente fixa), placar, sons e música;
+- Quatro dificuldades (Fácil, Normal, Difícil, Pesadelo), com a pontuação multiplicada e a letra no placar.
+- Menu, pausa, opções (sensibilidade, volumes, tela cheia, semente fixa, teclas, controle), placar, sons e música;
   "Salvar e sair" para continuar a partida depois (um salvamento só, a morte continua permanente).
 
 ![Inventário](docs/imagens/inventario.png)
@@ -59,7 +81,7 @@ cmake --preset vs
 .\ferramentas\importar_sons.ps1 <pasta> # sons novos (WAV, OGG ou MP3) para assets\sons; ver docs/PROMPTS_SONS.md
 ```
 
-Opções úteis para testar: `--semente <n>`, `--andar <n>`, `--invencivel`, `--demo <semente>` (anda sozinho até
+Opções úteis para testar: `--semente <n>`, `--andar <n>`, `--dificuldade <facil|normal|dificil|pesadelo>`, `--invencivel`, `--demo <semente>` (anda sozinho até
 o elevador e salva capturas em `capturas\`). A especificação e os planos de cada etapa ficam em `docs/superpowers/`.
 
 ## Créditos

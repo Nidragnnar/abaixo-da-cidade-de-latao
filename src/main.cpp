@@ -72,11 +72,12 @@ struct Opcoes {
     std::string dados;                   // --dados <pasta>: placar e opções fora do %APPDATA% (testes)
     std::optional<uint32_t> demo;        // --demo <semente>: anda sozinho até o elevador tirando capturas
     bool mudo = false;                   // --mudo: não abre o áudio
-    std::string tela;                    // --tela principal|opcoes|placar|pausa: abre essa tela (capturas)
+    std::string tela;                    // --tela principal|opcoes|placar|pausa|teclas: abre essa tela (capturas)
     // --inimigo <letra> <x> <z> (repetível): põe mais um inimigo no andar inicial (letras dos mapas de teste)
     std::vector<std::pair<char, glm::vec2>> inimigos;
     std::optional<int> vidaChefe;        // --vida-chefe <n>: o chefe do andar inicial começa com essa vida (testes)
     bool gravarPartida = false;          // --gravar-partida: monta a partida pedida, grava partida.sav e sai (cenários)
+    std::optional<jogo::Dificuldade> dificuldade;  // --dificuldade facil|normal|dificil|pesadelo: no lugar da do config
 
     // Começa direto na partida, sem o menu (cenários de teste e roteiros)
     bool direto() const {
@@ -108,6 +109,7 @@ Opcoes lerOpcoes(int argc, char** argv) {
         else if (arg == "--tela" && temValor) o.tela = argv[++i];
         else if (arg == "--vida-chefe" && temValor) o.vidaChefe = std::stoi(argv[++i]);
         else if (arg == "--gravar-partida") o.gravarPartida = true;
+        else if (arg == "--dificuldade" && temValor) o.dificuldade = jogo::dificuldadeDoId(argv[++i]);
         else if (arg == "--inimigo" && i + 3 < argc) {
             const char letra = argv[++i][0];
             const float x = std::stof(argv[++i]);
@@ -293,7 +295,7 @@ int registrarNoPlacar(const jogo::Partida& p) {
     const auto novo = jogo::inserirNoPlacar(
         leitura.registros,
         {p.pontuacao(), p.andar().numero, p.nivel(), p.inimigosDestruidos(), p.engrenagens(), p.semente(),
-         std::string(p.causaDaMorte())},
+         std::string(p.causaDaMorte()), p.dificuldade()},
         &posicao);
     if (!jogo::gravarPlacar(arquivo, novo)) {
         plataforma::logar("Não foi possível gravar o placar em " + arquivo.string());
@@ -330,6 +332,7 @@ ui::Tela telaDaOpcao(const std::string& nome) {
     if (nome == "opcoes") return ui::Tela::Opcoes;
     if (nome == "placar") return ui::Tela::Placar;
     if (nome == "pausa") return ui::Tela::Pausa;
+    if (nome == "teclas") return ui::Tela::Teclas;
     return ui::Tela::Jogo;
 }
 
@@ -368,6 +371,8 @@ int main(int argc, char** argv) {
         if (telaCheia) janela.definirTelaCheia(true);
         plataforma::Entrada entrada(janela.sdl());
         entrada.definirSensibilidade(jogo::radianosPorPixel(config.sensibilidade));
+        entrada.definirAtalhos(config.teclas);
+        entrada.definirControle(config.sensibilidadeControle, config.inverterVertical);
         // Depois da janela: é destruído antes dela (que fecha a SDL)
         std::optional<plataforma::Audio> audio;
         if (!opcoes.mudo) {
@@ -379,9 +384,15 @@ int main(int argc, char** argv) {
         auto tocar = [&](jogo::Som s, float volume = 1.0f, float pan = 0.0f) {
             if (audio) audio->tocar(s, volume, pan);
         };
+        // Nome da tecla atual de cada ação, para os textos que citam teclas ("{recarregar}" vira "R", ou "B" no controle)
+        const auto nomeDaTecla = [&](jogo::AcaoJogo a) {
+            return std::string(entrada.ultimoFoiControle() ? ui::nomeNoControle(a) : jogo::nomeDaTecla(config.teclas.de(a)));
+        };
         // Opções que valem na hora (menu de opções)
         auto aplicarConfig = [&] {
             entrada.definirSensibilidade(jogo::radianosPorPixel(config.sensibilidade));
+            entrada.definirAtalhos(config.teclas);
+            entrada.definirControle(config.sensibilidadeControle, config.inverterVertical);
             if (audio) audio->definirVolumes(config.volumeEfeitos, config.volumeMusica);
             if (config.telaCheia != telaCheia && !automatico) {
                 telaCheia = config.telaCheia;
@@ -449,8 +460,10 @@ int main(int argc, char** argv) {
             anterior = partida->jogador();
         };
         auto novaPartida = [&](uint32_t semente, int andar) {
-            plataforma::logar(std::format("Partida com semente {} (andar inicial {})", semente, andar));
-            partida = std::make_unique<jogo::Partida>(semente, andar);
+            const jogo::Dificuldade dificuldade = opcoes.dificuldade.value_or(config.dificuldade);
+            plataforma::logar(std::format("Partida com semente {} (andar inicial {}, {})", semente, andar,
+                                          jogo::nomeDa(dificuldade)));
+            partida = std::make_unique<jogo::Partida>(semente, andar, dificuldade);
             partidaDeFundo = false;
             if (opcoes.invencivel || modoDemo) partida->tornarInvencivel();
             if (opcoes.mapaCompleto) partida->revelarMapa();
@@ -508,7 +521,12 @@ int main(int argc, char** argv) {
         bool demoTerminou = false;
         while (!entrada.pediuSair() && !sair) {
             SDL_Event e;
-            while (SDL_PollEvent(&e)) entrada.processarEvento(e);
+            while (SDL_PollEvent(&e)) {
+                entrada.processarEvento(e);
+                // Esperando tecla na tela Teclas e a janela perdeu o foco: desiste da espera
+                if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_FOCUS_LOST && menus.tela() == ui::Tela::Teclas)
+                    menus.focoPerdido();
+            }
 
             // Minimizado: alguns drivers não seguram o V-Sync e o laço giraria a 100% de CPU
             if (SDL_GetWindowFlags(janela.sdl()) & SDL_WINDOW_MINIMIZED) {
@@ -521,6 +539,7 @@ int main(int argc, char** argv) {
             double dt = static_cast<double>(agora - ultimo) / SDL_GetPerformanceFrequency();
             ultimo = agora;
             if (automatico) dt = passo.passo();  // um passo por quadro, sem depender do relógio
+            if (!automatico) entrada.atualizarControle(static_cast<float>(dt));  // controle de videogame, se houver
 
             // Esc ou foco perdido no jogo: pausa (o inventário aberto fecha)
             if (entrada.pediuPausa() && menus.tela() == ui::Tela::Jogo && !automatico) {
@@ -757,7 +776,10 @@ int main(int argc, char** argv) {
             // HUD (arma na mão por baixo, depois barras/flash e texto); só no jogo e na tela de fim
             const bool mostrarHud = !partidaDeFundo && (tela == ui::Tela::Jogo || tela == ui::Tela::Fim);
             if (mostrarHud && !entrada.inventarioAberto()) {  // o inventário e os menus cobrem o HUD
-                const render::ElementosHud hud = render::construirHud(estadoHud(*partida), telaL, telaA);
+                render::EstadoHud estado = estadoHud(*partida);
+                const std::string mensagem = jogo::comTeclas(estado.mensagem, nomeDaTecla);
+                estado.mensagem = mensagem;
+                const render::ElementosHud hud = render::construirHud(estado, telaL, telaA);
                 if (!partida->terminou()) desenhoTextura.desenhar(hud.arma, texturasArmas, telaL, telaA);
                 desenho2D.desenhar(hud.cores, telaL, telaA);
                 desenhoTextura.desenhar(hud.icones, texturasSprites, telaL, telaA);
@@ -793,7 +815,9 @@ int main(int argc, char** argv) {
                 }
                 if (cliques.direito && sobEspaco) partida->largarEspaco(*sob);
                 const render::ElementosInventario telaInv =
-                    render::construirInventario(partida->inventario(), layout, sob, arrastando, mouse, partida->mensagem());
+                    render::construirInventario(partida->inventario(), layout, sob, arrastando, mouse,
+                                                jogo::comTeclas(partida->mensagem(), nomeDaTecla),
+                                                jogo::comTeclas("Inventário ({inventario} fecha)", nomeDaTecla));
                 desenho2D.desenhar(telaInv.cores, telaL, telaA);
                 desenhoTextura.desenhar(telaInv.icones, texturasSprites, telaL, telaA);
                 desenhoTextura.desenhar(telaInv.texto, fonte, telaL, telaA);

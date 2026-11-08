@@ -266,3 +266,22 @@ TEST_CASE("chefe não acorda antes da luta, nem por barulho") {
     jogo::atualizarInimigos(v, m, 1.0f / 60);
     CHECK(v[0].estado == jogo::EstadoInimigo::Perseguindo);
 }
+
+TEST_CASE("pancada segue a dificuldade") {
+    auto a = salao("#@.P.........#");
+    auto v = jogo::inimigosDasMarcas(a, jogo::Dificuldade::Pesadelo);
+    v[0].estado = jogo::EstadoInimigo::Perseguindo;
+    v[0].recarga2 = jogo::PANCADA_INTERVALO;
+    simularChefe(v, a.grade, a.inicio, jogo::PANCADA_PREPARO - 0.1f);
+    const auto r = simularChefe(v, a.grade, a.inicio, 0.3f);
+    REQUIRE(r.total.ondas.size() == 1);
+    CHECK(r.total.ondas[0].dano >= static_cast<int>(std::lround(jogo::PANCADA_DANO_MIN * 1.8)));
+    CHECK(r.total.ondas[0].dano <= static_cast<int>(std::lround(jogo::PANCADA_DANO_MAX * 1.8)));
+    auto f = jogo::inimigosDasMarcas(a, jogo::Dificuldade::Facil);
+    f[0].estado = jogo::EstadoInimigo::Perseguindo;
+    f[0].recarga2 = jogo::PANCADA_INTERVALO;
+    simularChefe(f, a.grade, a.inicio, jogo::PANCADA_PREPARO - 0.1f);
+    const auto rf = simularChefe(f, a.grade, a.inicio, 0.3f);
+    REQUIRE(rf.total.ondas.size() == 1);
+    CHECK(rf.total.ondas[0].dano <= static_cast<int>(std::lround(jogo::PANCADA_DANO_MAX * 0.6)));
+}

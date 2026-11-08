@@ -19,7 +19,7 @@ struct Salvamento {
     static std::optional<Partida> ler(std::string_view texto);
 };
 
-constexpr int VERSAO_SALVAMENTO = 1;
+constexpr int VERSAO_SALVAMENTO = 2;  // 2: linha da dificuldade; a 1 (v1.4) é lida como Normal
 
 inline std::optional<std::string> escreverPartida(const Partida& p) { return Salvamento::escrever(p); }
 inline std::optional<Partida> lerPartida(std::string_view texto) { return Salvamento::ler(texto); }

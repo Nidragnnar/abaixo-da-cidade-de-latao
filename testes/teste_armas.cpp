@@ -122,7 +122,7 @@ TEST_CASE("revólver vazio avisa e recarga move balas da reserva") {
     std::mt19937 rng(1);
     auto r = passo(armas, inv, a, v, rng);
     CHECK_FALSE(r.disparou);
-    CHECK(r.mensagem == "Sem munição — R para recarregar");
+    CHECK(r.mensagem == "Sem munição — {recarregar} para recarregar");
     passo(armas, inv, a, v, rng, comando(false, false, true));
     for (int i = 0; i < 90; ++i) passo(armas, inv, a, v, rng, comando(false));
     CHECK(inv.armaDeFogo().carga == 4);
