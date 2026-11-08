@@ -1,7 +1,10 @@
 #include <doctest/doctest.h>
 
+#include <clocale>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <locale>
 #include <ostream>  // o doctest precisa para mostrar string
 #include <random>
 #include <string>
@@ -251,4 +254,104 @@ TEST_CASE("cenários de teste nunca mexem no salvamento do jogador") {
     // cenário que abre direto na partida (--semente, --andar, --posicao...): só com pasta de dados de teste
     CHECK_FALSE(jogo::podeUsarSalvamento(false, false, true, false));
     CHECK(jogo::podeUsarSalvamento(false, false, true, true));
+}
+
+TEST_CASE("comporta destrancada volta aberta") {
+    std::optional<jogo::Partida> p;
+    for (uint32_t s = 1; s <= 60 && !p; ++s) {
+        jogo::Partida q(s, 3);
+        if (q.andar().chave) p.emplace(std::move(q));
+    }
+    REQUIRE(p);
+    p->tornarInvencivel();
+    p->definirPosicao(*p->andar().chave);
+    passos(*p, 2);
+    REQUIRE(p->temChave());
+    // Para na célula de chão ao lado da comporta trancada, olhando para ela, e usa a válvula
+    const auto& g = p->andar().grade;
+    std::optional<glm::ivec2> porta;
+    for (int y = 0; y < g.altura() && !porta; ++y)
+        for (int x = 0; x < g.largura() && !porta; ++x)
+            if (g.em(x, y) == mundo::Celula::ComportaTrancada) porta = glm::ivec2(x, y);
+    REQUIRE(porta);
+    bool posicionou = false;
+    for (const glm::ivec2 d : {glm::ivec2(1, 0), glm::ivec2(-1, 0), glm::ivec2(0, 1), glm::ivec2(0, -1)}) {
+        const glm::ivec2 c = *porta + d;
+        if (g.em(c.x, c.y) != mundo::Celula::Chao) continue;
+        p->definirPosicao(glm::vec2(c) + 0.5f);
+        p->definirAngulo(std::atan2(static_cast<float>(-d.y), static_cast<float>(-d.x)));
+        posicionou = true;
+        break;
+    }
+    REQUIRE(posicionou);
+    passos(*p, 2);  // assenta os pés
+    jogo::Comandos e;
+    e.usar = true;
+    passos(*p, 1, e);
+    passos(*p, 180);  // termina de subir
+    REQUIRE_FALSE(p->temChave());
+    const mundo::Celula depois = p->andar().grade.em(porta->x, porta->y);
+    REQUIRE(depois != mundo::Celula::ComportaTrancada);
+    const auto lida = jogo::lerPartida(*jogo::escreverPartida(*p));
+    REQUIRE(lida);
+    CHECK(lida->andar().grade.em(porta->x, porta->y) == depois);
+}
+
+TEST_CASE("números sem depender do idioma, com o Windows em português") {
+    // Em pt-BR a vírgula é o separador decimal: o arquivo tem de continuar com ponto
+    const std::locale antes = std::locale::global(std::locale::classic());
+    const char* nome = std::setlocale(LC_ALL, "pt-BR");
+    try {
+        std::locale::global(std::locale("pt-BR"));
+    } catch (const std::exception&) {
+    }
+    jogo::Partida p(7, 1);
+    p.definirPosicao({12.375f, 7.125f});
+    const auto texto = jogo::escreverPartida(p);
+    const auto lida = texto ? jogo::lerPartida(*texto) : std::nullopt;
+    std::locale::global(antes);
+    std::setlocale(LC_ALL, "C");
+    INFO("locale pt-BR " << (nome ? "ativado" : "indisponível"));
+    REQUIRE(texto);
+    CHECK(texto->find("12.375") != std::string::npos);
+    REQUIRE(lida);
+    CHECK(lida->jogador().posicao == glm::vec2(12.375f, 7.125f));
+}
+
+TEST_CASE("arquivo gigante dá Estragado") {
+    PastaTemporaria pasta;
+    const auto arquivo = pasta.caminho / "partida.sav";
+    {
+        std::ofstream f(arquivo, std::ios::binary);
+        f << "versao 1\n" << std::string(5u << 20, 'x');
+    }
+    auto [resultado, lida] = jogo::continuarPartida(arquivo);
+    CHECK(resultado == jogo::ResultadoCarga::Estragado);
+    CHECK_FALSE(lida);
+}
+
+TEST_CASE("partida que não pode ser apagada não continua") {
+    // Continuar sem apagar daria para voltar depois de morrer: com o arquivo preso, recusa e o mantém
+    PastaTemporaria pasta;
+    const auto arquivo = pasta.caminho / "partida.sav";
+    jogo::Partida p(11, 2);
+    REQUIRE(jogo::gravarPartida(arquivo, p));
+    {
+        std::ifstream preso(arquivo);  // aberto por outro programa (antivírus, backup): o Windows não deixa apagar
+        REQUIRE(preso);
+        auto [resultado, lida] = jogo::continuarPartida(arquivo);
+        CHECK(resultado == jogo::ResultadoCarga::Preso);
+        CHECK_FALSE(lida);
+    }
+    CHECK(jogo::existePartidaSalva(arquivo));
+}
+
+TEST_CASE("dá para saber se a partida pode ser salva agora") {
+    jogo::Partida normal(1, 1);
+    CHECK(jogo::podeGravarAgora(normal));
+    jogo::Partida p(1, 6);
+    p.tornarInvencivel();
+    p.destruirChefeParaTeste();
+    passos(p, 1);  // contando a vitória
+    CHECK_FALSE(jogo::podeGravarAgora(p));
 }

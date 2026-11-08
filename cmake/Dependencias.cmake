@@ -26,16 +26,19 @@ FetchContent_Declare(doctest
 
 FetchContent_MakeAvailable(SDL2 glm doctest)
 
-# SDL_mixer como DLL: só WAV e OGG (stb_vorbis embutido), sem bibliotecas externas
+# SDL_mixer como DLL: só WAV, OGG (stb_vorbis) e MP3 (minimp3), todos embutidos, sem bibliotecas externas
 set(SDL2MIXER_VENDORED OFF CACHE BOOL "" FORCE)
 set(SDL2MIXER_SAMPLES OFF CACHE BOOL "" FORCE)
 set(SDL2MIXER_INSTALL OFF CACHE BOOL "" FORCE)
 set(SDL2MIXER_DEPS_SHARED OFF CACHE BOOL "" FORCE)
-foreach(formato OPUS MOD MIDI FLAC MP3 WAVPACK GME CMD AIFF VOC)
+foreach(formato OPUS MOD MIDI FLAC WAVPACK GME CMD AIFF VOC)
     set(SDL2MIXER_${formato} OFF CACHE BOOL "" FORCE)
 endforeach()
 set(SDL2MIXER_WAVE ON CACHE BOOL "" FORCE)
 set(SDL2MIXER_VORBIS "STB" CACHE STRING "" FORCE)
+set(SDL2MIXER_MP3 ON CACHE BOOL "" FORCE)  # para os sons gerados com IA, que muitas vezes vêm em MP3
+set(SDL2MIXER_MP3_MINIMP3 ON CACHE BOOL "" FORCE)
+set(SDL2MIXER_MP3_MPG123 OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(SDL2_mixer
     GIT_REPOSITORY https://github.com/libsdl-org/SDL_mixer.git
     GIT_TAG        release-2.8.1

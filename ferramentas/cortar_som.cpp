@@ -1,12 +1,14 @@
 // Prepara um som baixado de um pacote: corta um trecho, passa para mono, suaviza o começo e o fim e normaliza o pico.
 // Uso: cortar_som analisar <entrada>
 //      cortar_som <entrada> <saida.wav> <inicio_s> <fim_s> [pico 0–1, padrão 0,9] [saída suave em s, padrão 0,04]
-// Entrada: WAV PCM de 8, 16 ou 24 bits, ou OGG (decodificado pelo SDL_mixer em 22.050 Hz mono).
+//      cortar_som <entrada> <saida.wav> auto <duração máxima_s> [pico] [saída suave]   (tira o silêncio das pontas)
+// Entrada: WAV PCM de 8, 16 ou 24 bits; OGG, MP3 e outros WAV (float, comprimidos) pelo SDL_mixer em 22.050 Hz mono.
 #define SDL_MAIN_HANDLED
 #include <SDL.h>
 #include <SDL_mixer.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -31,6 +33,7 @@ uint16_t u16(const std::vector<unsigned char>& b, size_t p) { return static_cast
 bool lerOgg(const char* arquivo, Wav& w) {
     SDL_setenv("SDL_AUDIODRIVER", "dummy", 1);
     if (SDL_Init(SDL_INIT_AUDIO) != 0 || Mix_OpenAudio(22050, AUDIO_S16SYS, 1, 1024) != 0) return false;
+    Mix_Init(MIX_INIT_OGG | MIX_INIT_MP3);
     Mix_Chunk* c = Mix_LoadWAV(arquivo);
     if (c) {
         w.taxa = 22050;
@@ -43,9 +46,20 @@ bool lerOgg(const char* arquivo, Wav& w) {
     return c != nullptr;
 }
 
+bool lerWavPcm(const char* arquivo, Wav& w);
+
 bool ler(const char* arquivo, Wav& w) {
     const std::string nome = arquivo;
-    if (nome.size() > 4 && nome.substr(nome.size() - 4) == ".ogg") return lerOgg(arquivo, w);
+    // Só o WAV PCM é lido aqui; o resto (OGG, MP3, WAV em float) vai pelo SDL_mixer
+    std::string extensao = nome.size() > 4 ? nome.substr(nome.size() - 4) : "";
+    for (char& c : extensao) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    if (extensao != ".wav") return lerOgg(arquivo, w);
+    if (lerWavPcm(arquivo, w)) return true;
+    w = {};
+    return lerOgg(arquivo, w);
+}
+
+bool lerWavPcm(const char* arquivo, Wav& w) {
     std::ifstream f(arquivo, std::ios::binary);
     const std::vector<unsigned char> b((std::istreambuf_iterator<char>(f)), {});
     if (b.size() < 44 || std::memcmp(b.data(), "RIFF", 4) || std::memcmp(b.data() + 8, "WAVE", 4)) return false;
@@ -132,8 +146,21 @@ int main(int argc, char** argv) {
     }
     if (argc < 5) return std::fprintf(stderr, "uso: cortar_som analisar <wav> | <entrada> <saida> <inicio_s> <fim_s> [pico]\n"), 1;
     if (!ler(argv[1], w)) return std::fprintf(stderr, "não li %s\n", argv[1]), 1;
-    const size_t inicio = std::min(w.amostras.size(), static_cast<size_t>(std::atof(argv[3]) * w.taxa));
-    const size_t fim = std::clamp(static_cast<size_t>(std::atof(argv[4]) * w.taxa), inicio, w.amostras.size());
+    size_t inicio = std::min(w.amostras.size(), static_cast<size_t>(std::atof(argv[3]) * w.taxa));
+    size_t fim = std::clamp(static_cast<size_t>(std::atof(argv[4]) * w.taxa), inicio, w.amostras.size());
+    // "auto": começa no primeiro som (2% do pico, menos 5 ms), dura no máximo <fim_s> e corta o silêncio do fim
+    if (std::string(argv[3]) == "auto") {
+        float picoTotal = 0;
+        for (float v : w.amostras) picoTotal = std::max(picoTotal, std::abs(v));
+        const float limiar = 0.02f * picoTotal;
+        size_t primeiro = 0, ultimo = w.amostras.size();
+        while (primeiro < w.amostras.size() && std::abs(w.amostras[primeiro]) <= limiar) ++primeiro;
+        while (ultimo > primeiro && std::abs(w.amostras[ultimo - 1]) <= limiar) --ultimo;
+        const size_t folga = static_cast<size_t>(w.taxa / 200);
+        inicio = primeiro > folga ? primeiro - folga : 0;
+        const size_t maximo = static_cast<size_t>(std::atof(argv[4]) * w.taxa);
+        fim = std::min({w.amostras.size(), ultimo + 4 * folga, inicio + maximo});
+    }
     Wav saida{w.taxa, std::vector<float>(w.amostras.begin() + static_cast<std::ptrdiff_t>(inicio),
                                          w.amostras.begin() + static_cast<std::ptrdiff_t>(fim))};
     // 5 ms de entrada e (por padrão) 40 ms de saída evitam estalos no corte; saída longa = som que some aos poucos

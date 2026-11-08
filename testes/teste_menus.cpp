@@ -301,3 +301,17 @@ TEST_CASE("pausa tem Salvar e sair e devolve SalvarESair") {
     m.atualizar(mover(1), c);
     CHECK(m.atualizar(confirmar(), c) == ui::Acao::SalvarESair);
 }
+
+TEST_CASE("aviso do menu some ao trocar de tela") {
+    ui::Menus m;
+    jogo::Config c;
+    m.abrir(ui::Tela::Pausa);
+    m.definirAviso("Não foi possível salvar");
+    m.atualizar(mover(1), c);
+    CHECK(m.aviso() == "Não foi possível salvar");  // continua na pausa
+    m.atualizar(mover(-1), c);
+    REQUIRE(m.atualizar(confirmar(), c) == ui::Acao::Continuar);
+    CHECK(m.aviso().empty());
+    m.atualizar(voltar(), c);  // pausa de novo
+    CHECK(m.aviso().empty());
+}

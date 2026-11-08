@@ -19,10 +19,10 @@ namespace {
 constexpr int CANAIS = 32;
 constexpr float VOLUME_BASE_MUSICA = 0.6f;  // a faixa baixada vem bem mais alta que os efeitos
 
-// Arquivos que existem para o som, na ordem de preferência: .ogg, depois .wav
+// Arquivos que existem para o som, na ordem de preferência: .ogg, .mp3, depois .wav
 std::vector<std::filesystem::path> arquivosDoSom(std::string_view nome) {
     std::vector<std::filesystem::path> achados;
-    for (const char* extensao : {".ogg", ".wav"}) {
+    for (const char* extensao : {".ogg", ".mp3", ".wav"}) {
         const std::filesystem::path p = caminhoAsset("sons/" + std::string(nome) + extensao);
         std::error_code erro;
         if (std::filesystem::exists(p, erro)) achados.push_back(p);
@@ -57,7 +57,7 @@ Audio::Audio() {
         logar(std::string("Áudio indisponível (o jogo segue sem som): ") + SDL_GetError());
         return;
     }
-    Mix_Init(MIX_INIT_OGG);
+    Mix_Init(MIX_INIT_OGG | MIX_INIT_MP3);
     if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 1024) != 0) {
         logar(std::string("Áudio indisponível (o jogo segue sem som): ") + Mix_GetError());
         Mix_Quit();

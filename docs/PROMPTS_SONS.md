@@ -9,7 +9,8 @@ Serve para IAs de efeito sonoro (como ElevenLabs Sound Effects, Stable Audio) e,
 
 ## Regras para o som voltar ao jogo
 
-- **Mesmo nome de arquivo**, em **WAV** ou **OGG** (MP3 também serve: eu converto).
+- **Mesmo nome de arquivo**, em **WAV**, **OGG** ou **MP3**. Várias versões do mesmo som: `zumbido.mp3`, `zumbido_2.mp3`,
+  `zumbido (3).mp3` (entra a sem número; as outras ficam preparadas para ouvir).
 - **Duração:** a da tabela, mais ou menos. Efeitos curtos começam **na hora** (sem silêncio antes) e acabam limpos.
 - **Músicas:** de 1 a 3 minutos, **instrumentais**, que possam **repetir em loop** (o fim emenda no começo).
 - Não precisa acertar o volume: eu normalizo cada som e ajusto no jogo.
@@ -76,3 +77,20 @@ Para as músicas troque por: **"instrumental loopable video game soundtrack, ste
 | Arquivo | Duração | Quando toca | Prompt |
 |---|---|---|---|
 | `musica.ogg` | 1–3 min, loop | o jogo todo (menos a luta com chefe) | Dark ambient exploration music for an underground steampunk city, slow mechanical rhythm, distant machinery and dripping water, low cello drones, subtle, loopable |
+
+---
+
+## Importar para o jogo
+
+```
+cmake --build --preset release --target cortar_som
+.\ferramentas\importar_sons.ps1 <pasta ou zip com os sons>
+```
+
+- Antes de mexer, copia os sons atuais para `arte_fonte\sons_antes_<data>\` (para voltar atrás).
+- Efeitos: tira o silêncio do começo e do fim, corta na duração máxima (a da tabela, com folga), passa para mono e
+  põe o volume de cada som (os mesmos de `preparar_sons.ps1`).
+- Músicas (`musica`, `musica_chefe`): entram como vieram (WAV, OGG ou MP3), sem cortar.
+- Todas as versões ficam prontas em `arte_fonte\sons_ia\candidatos\` para ouvir; para trocar a escolhida, renomeie e
+  rode de novo. Nome desconhecido é ignorado, e quem não veio continua com o som atual.
+- Depois: anotar os sons novos em `assets\LICENCAS.txt`.

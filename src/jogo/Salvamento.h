@@ -33,7 +33,12 @@ constexpr bool podeUsarSalvamento(bool automatico, bool invencivel, bool direto,
     return !automatico && !invencivel && (!direto || temDadosDeTeste);
 }
 
-enum class ResultadoCarga { Nenhum, Carregou, Estragado };
+// Preso: o arquivo não pôde ser apagado (outro programa o segura); a partida não continua, para a morte seguir
+// permanente, e o arquivo fica para tentar de novo
+enum class ResultadoCarga { Nenhum, Carregou, Estragado, Preso };
+
+// A partida pode ser gravada agora? Falso morto, vencido ou contando a vitória
+bool podeGravarAgora(const Partida& p);
 
 // Gravação atômica; falso se a partida não pode ser gravada (morto, venceu) ou se o disco recusou
 bool gravarPartida(const std::filesystem::path& arquivo, const Partida& p);

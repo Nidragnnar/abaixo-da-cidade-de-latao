@@ -43,6 +43,9 @@ public:
     int selecionado() const { return selecionado_; }
     // "Abaixo da Cidade de Latão", "Pausa", "Opções", "Placar" (vazio no jogo e no fim)
     std::string_view titulo() const;
+    // Texto embaixo dos itens (partida salva que não abriu, salvamento que falhou); some ao trocar de tela
+    void definirAviso(std::string aviso) { aviso_ = std::move(aviso); }
+    const std::string& aviso() const { return aviso_; }
 
 private:
     Acao confirmarItem(jogo::Config& c);
@@ -57,6 +60,7 @@ private:
     bool confirmandoNovo_ = false;  // "Novo jogo" com partida salva: segundo Enter apaga e começa
     bool partidaSalva_ = false;
     int base() const { return partidaSalva_ ? 1 : 0; }  // "Continuar partida" empurra os itens do principal
+    std::string aviso_;
     std::optional<int> ultimoSobMouse_;  // item sob o mouse no quadro anterior (fica entre telas)
 };
 

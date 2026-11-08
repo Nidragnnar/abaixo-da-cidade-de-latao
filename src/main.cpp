@@ -362,7 +362,6 @@ int main(int argc, char** argv) {
         const std::filesystem::path arquivoSalvamento = plataforma::pastaDeDados() / "partida.sav";
         const bool podeSalvar = usaDadosDoJogador &&
                                 jogo::podeUsarSalvamento(automatico, opcoes.invencivel, opcoes.direto(), !opcoes.dados.empty());
-        std::string avisoMenu;  // embaixo dos itens do menu (partida salva que não abriu, salvamento que falhou)
 
         plataforma::Janela janela(NOME_DO_JOGO, 1280, 720);
         bool telaCheia = config.telaCheia && !automatico;
@@ -616,17 +615,22 @@ int main(int argc, char** argv) {
                         // Com partida salva, o menu já pediu confirmação: começar outra a apaga
                         if (podeSalvar) jogo::apagarPartidaSalva(arquivoSalvamento);
                         menus.definirPartidaSalva(false);
-                        avisoMenu.clear();
                         novaPartida(config.semente.value_or(std::random_device{}()), 1);
                         entrada.entrarNoJogo();
                         break;
                     case ui::Acao::ContinuarSalva: {
                         auto [resultado, lida] = jogo::continuarPartida(arquivoSalvamento);
-                        menus.definirPartidaSalva(false);  // continuar consome o salvamento (ou ele estava estragado)
+                        // Continuar consome o salvamento (ou ele estava estragado); preso, ele fica para outra tentativa
+                        menus.definirPartidaSalva(resultado == jogo::ResultadoCarga::Preso);
                         if (resultado != jogo::ResultadoCarga::Carregou) {
                             menus.abrir(ui::Tela::Principal);
-                            avisoMenu = resultado == jogo::ResultadoCarga::Estragado ? "Partida salva não pôde ser lida" : "";
-                            plataforma::logar("partida.sav não pôde ser lida (renomeada para .corrompido)");
+                            if (resultado == jogo::ResultadoCarga::Estragado) {
+                                menus.definirAviso("Partida salva não pôde ser lida");
+                                plataforma::logar("partida.sav não pôde ser lida (renomeada para .corrompido)");
+                            } else if (resultado == jogo::ResultadoCarga::Preso) {
+                                menus.definirAviso("Partida salva em uso: feche outros programas");
+                                plataforma::logar("partida.sav não pôde ser apagada; a partida não continua");
+                            }
                             break;
                         }
                         plataforma::logar(std::format("Partida salva continuada (semente {}, andar {})", lida->semente(),
@@ -638,16 +642,18 @@ int main(int argc, char** argv) {
                         tempoMorto = 0.0f;
                         passo.zerar();
                         prepararAndar();
-                        avisoMenu.clear();
                         entrada.entrarNoJogo();
                         break;
                     }
                     case ui::Acao::SalvarESair:
-                        if (podeSalvar && jogo::gravarPartida(arquivoSalvamento, *partida)) {
+                        if (!podeSalvar || !jogo::podeGravarAgora(*partida)) {
+                            // Modo de teste sem pasta de dados, ou a vitória contando: não é falha do disco
+                            menus.definirAviso("Não dá para salvar agora");  // fica na pausa
+                        } else if (jogo::gravarPartida(arquivoSalvamento, *partida)) {
                             plataforma::logar("Partida salva; saindo");
                             sair = true;
                         } else {
-                            avisoMenu = "Não foi possível salvar";  // fica na pausa
+                            menus.definirAviso("Não foi possível salvar");
                             plataforma::logar("Não foi possível salvar " + arquivoSalvamento.string());
                         }
                         break;
@@ -807,7 +813,7 @@ int main(int argc, char** argv) {
                 const render::ElementosHud m =
                     tela == ui::Tela::Placar
                         ? render::construirPlacar(placarLido, telaL, telaA)
-                        : render::construirMenu({menus.titulo(), menus.itens(config), menus.selecionado(), avisoMenu}, telaL, telaA);
+                        : render::construirMenu({menus.titulo(), menus.itens(config), menus.selecionado(), menus.aviso()}, telaL, telaA);
                 desenho2D.desenhar(m.cores, telaL, telaA);
                 desenhoTextura.desenhar(m.texto, fonte, telaL, telaA);
             }

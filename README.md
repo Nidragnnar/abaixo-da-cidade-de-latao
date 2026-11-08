@@ -55,6 +55,7 @@ Requisitos: Visual Studio 2026 (com C++) e CMake 3.25 ou mais novo.
 cmake --preset vs
 .\ferramentas\compilar.ps1 release      # compila e roda os testes automáticos
 .\ferramentas\empacotar.ps1 1.4         # gera pacote\AbaixoDaCidadeDeLatao-v1.4.zip (sem versão: -teste.zip)
+.\ferramentas\importar_sons.ps1 <pasta> # sons novos (WAV, OGG ou MP3) para assets\sons; ver docs/PROMPTS_SONS.md
 ```
 
 Opções úteis para testar: `--semente <n>`, `--andar <n>`, `--invencivel`, `--demo <semente>` (anda sozinho até

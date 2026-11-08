@@ -9,19 +9,24 @@ bool gravarAtomico(const std::filesystem::path& arquivo, std::string_view conteu
     temporario += ".tmp";
     try {
         if (arquivo.has_parent_path()) std::filesystem::create_directories(arquivo.parent_path());
+        bool escreveu = false;
         {
             std::ofstream f(temporario, std::ios::binary | std::ios::trunc);
-            if (!f) return false;
-            f.write(conteudo.data(), static_cast<std::streamsize>(conteudo.size()));
-            if (!f) return false;
+            if (f) {
+                f.write(conteudo.data(), static_cast<std::streamsize>(conteudo.size()));
+                f.close();  // disco cheio aparece aqui, ao esvaziar o buffer
+                escreveu = !f.fail();
+            }
         }
-        std::filesystem::rename(temporario, arquivo);  // substitui o anterior
-        return true;
+        if (escreveu) {
+            std::filesystem::rename(temporario, arquivo);  // substitui o anterior só com o novo inteiro
+            return true;
+        }
     } catch (const std::exception&) {
-        std::error_code erro;
-        std::filesystem::remove(temporario, erro);  // não deixa o .tmp para trás
-        return false;
     }
+    std::error_code erro;
+    std::filesystem::remove(temporario, erro);  // não deixa o .tmp para trás
+    return false;
 }
 
 bool renomearCorrompido(const std::filesystem::path& arquivo) {

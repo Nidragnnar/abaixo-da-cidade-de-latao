@@ -272,6 +272,8 @@ bool gravarPartida(const std::filesystem::path& arquivo, const Partida& p) {
     return texto && gravarAtomico(arquivo, *texto);
 }
 
+bool podeGravarAgora(const Partida& p) { return escreverPartida(p).has_value(); }
+
 bool existePartidaSalva(const std::filesystem::path& arquivo) {
     std::error_code e;
     return std::filesystem::is_regular_file(arquivo, e);
@@ -279,19 +281,23 @@ bool existePartidaSalva(const std::filesystem::path& arquivo) {
 
 std::pair<ResultadoCarga, std::optional<Partida>> continuarPartida(const std::filesystem::path& arquivo) {
     if (!existePartidaSalva(arquivo)) return {ResultadoCarga::Nenhum, std::nullopt};
-    std::string texto;
-    {
+    std::optional<Partida> p;
+    std::error_code e;
+    const auto tamanho = std::filesystem::file_size(arquivo, e);
+    if (!e && tamanho <= TAMANHO_MAXIMO) {  // grande demais nem é lido
         std::ifstream f(arquivo, std::ios::binary);
         std::ostringstream conteudo;
         conteudo << f.rdbuf();
-        texto = conteudo.str();
+        p = lerPartida(conteudo.str());
     }
-    auto p = lerPartida(texto);
     if (!p) {
         renomearCorrompido(arquivo);
         return {ResultadoCarga::Estragado, std::nullopt};
     }
-    apagarPartidaSalva(arquivo);  // um salvamento só: continuar o consome
+    // Um salvamento só: continuar o consome. Se não der para apagar, não continua (senão daria para voltar depois
+    // de morrer)
+    std::filesystem::remove(arquivo, e);
+    if (e) return {ResultadoCarga::Preso, std::nullopt};
     return {ResultadoCarga::Carregou, std::move(p)};
 }
 

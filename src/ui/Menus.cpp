@@ -25,6 +25,7 @@ void Menus::irPara(Tela t, int selecionado) {
     tela_ = t;
     selecionado_ = selecionado;
     confirmandoAbandono_ = confirmandoNovo_ = false;
+    aviso_.clear();  // o aviso é da tela em que apareceu
 }
 
 void Menus::abrir(Tela t) { irPara(t); }
